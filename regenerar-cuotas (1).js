@@ -33,7 +33,12 @@ function buildSchedule(mov) {
   const daysBetween = (a, b) => Math.round((new Date(b+"T12:00:00") - new Date(a+"T12:00:00")) / 86400000);
   const lastOfMonth = (dateStr) => { const d = new Date(dateStr+"T12:00:00"); return new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().slice(0,10); };
 
-  const freqMap = { monthly:1, bimonthly:2, quarterly:4, semiannual:6, annual:12 };
+  const freqMap = { monthly:1, bimonthly:2, trimestral:3, quarterly:4, semiannual:6, annual:12 };
+  if (mov.frequency === "at_maturity") {
+    const days = daysBetween(startDate, endDate);
+    const amount = parseFloat((capital * dailyRate * days).toFixed(2));
+    return [{ scheduleId:`${mov.id}_${endDate}`, capitalMovId:mov.id, dueDate:endDate, amount, partial:false, partialDays:null }];
+  }
   const periodMonths = freqMap[mov.frequency] || 1;
   const fullPeriodAmount = parseFloat((capital * mov.annualRate / 100 / 12 * periodMonths).toFixed(2));
 
