@@ -1,0 +1,852 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
+<title>Estado de Cuenta — Nicolas Arditti</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#1a1d2e;font-size:13px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.page{max-width:800px;margin:0 auto;padding:0;}
+.header{background:#1a1d2e;color:#fff;padding:28px 40px;display:flex;justify-content:space-between;align-items:center;}
+.brand{font-size:20px;font-weight:700;letter-spacing:-0.5px;}
+.brand-sub{font-size:10px;color:#a0a4c0;margin-top:3px;letter-spacing:1px;text-transform:uppercase;}
+.doc-title{font-size:16px;font-weight:700;text-align:right;}
+.doc-sub{font-size:11px;color:#a0a4c0;margin-top:4px;text-align:right;}
+.body{padding:32px 40px;}
+.account-box{background:#f8f9ff;border-radius:10px;padding:18px 22px;margin-bottom:28px;display:flex;justify-content:space-between;align-items:center;border:1px solid #e8eaf2;}
+.account-name{font-size:16px;font-weight:700;}
+.account-email{font-size:12px;color:#6b7094;margin-top:3px;}
+.period-label{font-size:10px;color:#6b7094;text-transform:uppercase;letter-spacing:1px;text-align:right;}
+.period-value{font-size:13px;font-weight:600;text-align:right;margin-top:2px;}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:30px;}
+.card{border:1px solid #e8eaf2;border-radius:8px;padding:14px 16px;}
+.card.dark{background:#1a1d2e;border-color:#1a1d2e;}
+.card-label{font-size:9px;color:#6b7094;text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;}
+.card.dark .card-label{color:#a0a4c0;}
+.card-value{font-size:14px;font-weight:700;font-family:'Courier New',monospace;}
+.card-value.g{color:#16a34a;}.card-value.r{color:#dc2626;}.card-value.o{color:#ea580c;}.card-value.w{color:#fff;}
+.section-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#6b7094;margin-bottom:10px;margin-top:24px;}
+table{width:100%;border-collapse:collapse;margin-bottom:4px;}
+thead tr{background:#1a1d2e;}
+thead th{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#fff;padding:8px 10px;text-align:left;}
+thead th.r{text-align:right;}
+tbody tr:nth-child(even){background:#f8f9ff;}
+tbody td{padding:9px 10px;border-bottom:1px solid #f0f2f8;font-size:12px;vertical-align:middle;}
+tbody td.r{text-align:right;}
+.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:9px;font-weight:700;white-space:nowrap;}
+.cap-in{background:#dcfce7;color:#15803d;}
+.deposit{background:#e0f2fe;color:#0369a1;}
+.cap-out{background:#fee2e2;color:#dc2626;}
+.interest{background:#fef3c7;color:#92400e;}
+.interest-paid{background:#f3e8ff;color:#7c3aed;}
+.badge-simple{background:#dcfce7;color:#15803d;}
+.badge-compound{background:#dbeafe;color:#1d4ed8;}
+.cr{color:#16a34a;font-weight:700;font-family:'Courier New',monospace;}
+.dr{color:#dc2626;font-weight:700;font-family:'Courier New',monospace;}
+.bal{font-weight:700;font-family:'Courier New',monospace;}
+.muted{color:#9ca3af;}
+.footer{margin-top:32px;padding-top:14px;border-top:1px solid #e8eaf2;display:flex;justify-content:space-between;}
+.footer span{font-size:10px;color:#9ca3af;}
+@media print{.page{max-width:100%;}}
+</style></head><body><div class="page">
+<div class="header">
+  <div><div class="brand">InversorApp</div><div class="brand-sub">Sistema de gestión de inversiones</div></div>
+  <div><div class="doc-title">Estado de Cuenta</div><div class="doc-sub">Emitido al 15/03/2026</div></div>
+</div>
+<div class="body">
+  <div class="account-box">
+    <div><div class="account-name">Nicolas Arditti</div></div>
+    <div><div class="period-label">Período</div><div class="period-value">Hasta el 15/03/2026</div></div>
+  </div>
+  <div class="section-title">Resumen de cuenta</div>
+  <div class="cards">
+    <div class="card"><div class="card-label">Capital invertido</div><div class="card-value g">$ 1.245.000,00</div></div>
+    <div class="card"><div class="card-label">Capital retirado</div><div class="card-value r">$ 0,00</div></div>
+    <div class="card"><div class="card-label">Intereses cobrados</div><div class="card-value o">$ 0,00</div></div>
+    <div class="card dark"><div class="card-label">Saldo capital</div><div class="card-value w">$ 1.245.000,00</div></div>
+  </div>
+  
+  <div class="section-title">Inversiones activas al 15/03/2026</div>
+  <table><thead><tr><th>Empresa / Descripción</th><th>Inicio</th><th>Vencimiento</th><th>Tasa</th><th>Tipo</th><th class="r">Capital neto</th></tr></thead><tbody>
+  <tr><td><strong>Fortec A LLC</strong></td><td>15/06/2024</td><td>15/06/2026</td><td><strong>9.00%</strong></td><td><span class="badge badge-simple">Simple</span></td><td class="r"><strong>$ 165.000,00</strong></td></tr><tr><td><strong>Fortis E II LLC</strong></td><td>03/04/2025</td><td>10/04/2027</td><td><strong>9.00%</strong></td><td><span class="badge badge-simple">Simple</span></td><td class="r"><strong>$ 150.000,00</strong></td></tr><tr><td><strong>Fortis E II LLC</strong></td><td>15/01/2026</td><td>15/01/2028</td><td><strong>9.00%</strong></td><td><span class="badge badge-simple">Simple</span></td><td class="r"><strong>$ 250.000,00</strong></td></tr>
+  </tbody></table>
+  <div class="section-title">Movimientos y transacciones</div>
+  
+  <table><thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th class="r">Crédito</th><th class="r">Débito</th><th class="r">Saldo</th></tr></thead><tbody>
+  <tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/01/2021</td>
+    <td><span class="badge cap-in">Inversión</span></td>
+    <td>Fortis D LLC <span style="color:#6b7094;font-size:11px">(9% → 14/01/2023</span>)</td>
+    <td class="r"><span class="cr">+$ 115.000,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 115.000,00</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/02/2021</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 115.862,50</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/03/2021</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 116.725,00</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/04/2021</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 117.587,50</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/05/2021</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 118.450,00</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/06/2021</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 119.312,50</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/07/2021</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 120.175,00</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/08/2021</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 121.037,50</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/09/2021</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 121.900,00</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/10/2021</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 122.762,50</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/11/2021</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 123.625,00</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/12/2021</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 124.487,50</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/01/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 125.350,00</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/02/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 126.212,50</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/03/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 127.075,00</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/04/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 127.937,50</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/05/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 128.800,00</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/06/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 129.662,50</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/06/2022</td>
+    <td><span class="badge cap-in">Inversión</span></td>
+    <td>Fortec A LLC <span style="color:#6b7094;font-size:11px">(9% → 15/06/2024</span>)</td>
+    <td class="r"><span class="cr">+$ 165.000,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 294.662,50</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/07/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 295.525,00</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/07/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 296.762,50</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/08/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 297.625,00</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/08/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 298.862,50</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/09/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 299.725,00</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/09/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 300.962,50</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/10/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 301.825,00</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/10/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 303.062,50</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/11/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 303.925,00</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/11/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 305.162,50</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/12/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 306.400,00</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/12/2022</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 862,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 307.262,50</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">14/01/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis D LLC</td>
+    <td class="r"><span class="cr">+$ 850,68</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 308.113,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/01/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 309.350,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/02/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 310.588,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/03/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 311.825,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/04/2023</td>
+    <td><span class="badge cap-in">Inversión</span></td>
+    <td>Fortis E II LLC <span style="color:#6b7094;font-size:11px">(9% → 10/04/2025</span>)</td>
+    <td class="r"><span class="cr">+$ 150.000,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 461.825,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/04/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 463.063,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/05/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 464.188,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/05/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 465.425,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/06/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 466.550,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/06/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 467.788,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/07/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 468.913,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/07/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 470.150,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/08/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 471.275,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/08/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 472.513,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/09/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 473.638,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/09/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 474.875,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/10/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 476.000,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/10/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 477.238,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/11/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 478.363,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/11/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 479.600,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/12/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 480.725,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/12/2023</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 481.963,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/01/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 483.088,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/01/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 484.325,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/01/2024</td>
+    <td><span class="badge cap-in">Inversión</span></td>
+    <td>Fortis E II LLC <span style="color:#6b7094;font-size:11px">(9% → 15/01/2026</span>)</td>
+    <td class="r"><span class="cr">+$ 250.000,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 734.325,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/02/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 735.450,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/02/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 736.688,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/02/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.875,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 738.563,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/03/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 739.688,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/03/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.875,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 741.563,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/03/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 742.800,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/04/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 743.925,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/04/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.875,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 745.800,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/04/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 747.038,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/05/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 748.163,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/05/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 749.400,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/05/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.875,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 751.275,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/06/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 752.400,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/06/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.875,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 754.275,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/06/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 755.513,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/06/2024</td>
+    <td><span class="badge cap-in">Inversión</span></td>
+    <td>Fortec A LLC <span style="color:#6b7094;font-size:11px">(9% → 15/06/2026</span>)</td>
+    <td class="r"><span class="cr">+$ 165.000,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 920.513,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/07/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 921.638,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/07/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.875,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 923.513,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/07/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 924.750,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/08/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 925.875,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/08/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.875,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 927.750,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/08/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 928.988,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/09/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 930.113,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/09/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.875,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 931.988,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/09/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 933.225,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/10/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 934.350,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/10/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 935.588,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/10/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.875,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 937.463,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/11/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 938.588,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/11/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 939.825,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/11/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.875,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 941.700,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/12/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 942.825,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/12/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.875,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 944.700,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/12/2024</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 945.938,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/01/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 947.063,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/01/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.875,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 948.938,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/01/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 950.175,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/02/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 951.300,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/02/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.875,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 953.175,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/02/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 954.413,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/03/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 955.538,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/03/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.875,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 957.413,18</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/03/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 958.650,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/04/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 959.775,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/04/2025</td>
+    <td><span class="badge cap-in">Inversión</span></td>
+    <td>Fortis E II LLC <span style="color:#6b7094;font-size:11px">(9% → 10/04/2027</span>)</td>
+    <td class="r"><span class="cr">+$ 150.000,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 1.109.775,68</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">10/04/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 258,90</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 1.110.034,58</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/04/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 1.111.272,08</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/04/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.875,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 1.113.147,08</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/05/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 1.114.272,08</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/05/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 1.115.509,58</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/05/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.875,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 1.117.384,58</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">03/06/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortis E II LLC</td>
+    <td class="r"><span class="cr">+$ 1.125,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 1.118.509,58</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/06/2025</td>
+    <td><span class="badge interest">Interés devengado</span></td>
+    <td>Interés Fortec A LLC</td>
+    <td class="r"><span class="cr">+$ 1.237,50</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 1.119.747,08</span></td>
+  </tr><tr>
+    <td style="color:#6b7094;font-family:'Courier New',monospace;font-size:11px">15/01/2026</td>
+    <td><span class="badge cap-in">Inversión</span></td>
+    <td>Fortis E II LLC <span style="color:#6b7094;font-size:11px">(9% → 15/01/2028</span>)</td>
+    <td class="r"><span class="cr">+$ 250.000,00</span></td>
+    <td class="r"><span class="muted">—</span></td>
+    <td class="r"><span class="bal">$ 1.369.747,08</span></td>
+  </tr>
+  </tbody></table>
+  <div class="footer">
+    <span>Generado el 15/03/2026 · InversorApp · Solo para uso interno</span>
+    <span>Página 1</span>
+  </div>
+</div>
+</div>
+<script>window.onload=()=>{window.print();}</script>
+</body></html>
