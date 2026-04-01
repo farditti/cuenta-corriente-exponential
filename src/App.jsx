@@ -197,9 +197,8 @@ const buildSchedule = (mov) => {
     if (firstDue <= endDate) dueDates.push({ date: firstDue, partial: startDay !== 1, partialDays: startDay !== 1 ? daysBetween(startDate, firstDue) : null });
     let current = addMonths(firstDue, freq.months);
     while (current <= endDate) { dueDates.push({ date: current, partial: false, partialDays: null }); current = addMonths(current, freq.months); }
-    const lastDayOfEndMonth = lastOfMonth(endDate);
     const lastSched = dueDates.length > 0 ? dueDates[dueDates.length - 1].date : startDate;
-    if (endDate < lastDayOfEndMonth && lastSched < endDate) {
+    if (lastSched < endDate) {
       const days = daysBetween(lastSched, endDate);
       if (days > 0) dueDates.push({ date: endDate, partial: true, partialDays: days });
     }
@@ -275,8 +274,7 @@ const buildSchedule = (mov) => {
   }
 
   const lastScheduled = schedule.length > 0 ? schedule[schedule.length - 1].dueDate : startDate;
-  const lastDayOfEndMonth = lastOfMonth(endDate);
-  if (endDate < lastDayOfEndMonth && lastScheduled < endDate) {
+  if (lastScheduled < endDate) {
     const endDay = parseInt(endDate.split("-")[2]);
     const lastSchedDay = parseInt(lastScheduled.split("-")[2]);
     const dayCoincides2 = endDay === lastSchedDay;
