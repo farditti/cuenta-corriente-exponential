@@ -1089,8 +1089,11 @@ function ScheduleRow({ item, capitalMov, onMarkPaid, onUnmark, onEditAmount, onM
           {item.adjustedByWithdrawal && item.originalAmount != null && item.originalAmount !== item.amount && (
             <span style={{fontSize:11,color:"#6b7094",textDecoration:"line-through",fontFamily:"'DM Mono',monospace"}}>{fmt(item.originalAmount)}</span>
           )}
-          {item.partial && !item.adjustedByWithdrawal && !isFinal && (
+          {item.partial && !item.adjustedByWithdrawal && !isFinal && !item.scheduleId?.endsWith('_res') && (
             <span style={{fontSize:10,padding:"2px 7px",borderRadius:20,fontWeight:600,background:"#7c6af715",color:"#7c6af7",border:"1px solid #7c6af730"}}>proporcional</span>
+          )}
+          {item.scheduleId?.endsWith('_res') && (
+            <span style={{fontSize:10,padding:"2px 7px",borderRadius:20,fontWeight:600,background:"#fb923c15",color:"#fb923c",border:"1px solid #fb923c30"}}>saldo pendiente</span>
           )}
           {item.adjustedByWithdrawal && (
             <span style={{fontSize:10,padding:"2px 7px",borderRadius:20,fontWeight:600,background:"#f8717118",color:"#f87171",border:"1px solid #f8717130"}}>ajustado por retiro</span>
@@ -2152,10 +2155,54 @@ export default function App() {
   };
 
   const handleMarkPaid = async (scheduleId, paidDate, paidAmount) => {
-    setSchedules(prev=>prev.map(s=>s.scheduleId===scheduleId?{...s,paid:true,paidDate,amount:paidAmount??s.amount}:s));
+    const sched = schedules.find(s=>s.scheduleId===scheduleId);
+    const originalAmount = sched ? (sched.isCompound ? (sched.periodInterest||0) : sched.amount) : paidAmount;
+    const isPartial = paidAmount != null && Math.abs(paidAmount - originalAmount) > 0.001;
+    const residual = isPartial ? parseFloat((originalAmount - paidAmount).toFixed(2)) : 0;
+    const residualId = `${scheduleId}_res`;
+
+    // Mark current schedule as paid with the paid amount
+    setSchedules(prev => {
+      const updated = prev.map(s=>s.scheduleId===scheduleId?{...s,paid:true,paidDate,amount:paidAmount??s.amount}:s);
+      if (isPartial && residual > 0 && sched) {
+        const residualSched = {
+          scheduleId: residualId,
+          capitalMovId: sched.capitalMovId,
+          dueDate: sched.dueDate,
+          amount: residual,
+          partial: true,
+          partialDays: null,
+          paid: false,
+          paidDate: null,
+          snapshotCapital: sched.snapshotCapital,
+          snapshotRate: sched.snapshotRate,
+        };
+        return [...updated, residualSched];
+      }
+      return updated;
+    });
+
     await sb.patch("schedules", scheduleId, "schedule_id", {paid:true, paid_date:paidDate, amount:paidAmount??undefined});
+
+    if (isPartial && residual > 0 && sched) {
+      await sb.post("schedules", {
+        schedule_id: residualId,
+        capital_mov_id: sched.capitalMovId,
+        due_date: sched.dueDate,
+        amount: residual,
+        partial: true,
+        partial_days: null,
+        paid: false,
+        paid_date: null,
+        snapshot_capital: sched.snapshotCapital,
+        snapshot_rate: sched.snapshotRate,
+        original_amount: residual,
+      });
+      showToast(`Pago parcial · Saldo pendiente: ${fmtDec(residual)} ✓`);
+    } else {
+      showToast("Interés marcado como pagado ✓");
+    }
     setMarkPaidItem(null);
-    showToast("Interés marcado como pagado ✓");
   };
 
   const handleMarkAllPaid = async (finalItem) => {
