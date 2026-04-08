@@ -3,7 +3,7 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from "react"
 // ─── Supabase ─────────────────────────────────────────────────────────────────
 // Reemplazá estos valores con los de tu proyecto en supabase.com → Settings → API
 const SUPABASE_URL = "https://urlhcfozaexorcxmhffc.supabase.co";
-const SUPABASE_KEY = ""sb_publishable_15ODb6irQhChPY1dD_Q5Bg_GIDvxZP-";
+const SUPABASE_KEY = "sb_publishable_15ODb6irQhChPY1dD_Q5Bg_GIDvxZP-";
 
 const sb = (() => {
   const h = () => ({ "Content-Type": "application/json", "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` });
