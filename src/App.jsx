@@ -2,8 +2,8 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from "react"
 
 // ─── Supabase ─────────────────────────────────────────────────────────────────
 // Reemplazá estos valores con los de tu proyecto en supabase.com → Settings → API
-const SUPABASE_URL = "https://urlhcfozaexorcxmhffc.supabase.co";
-const SUPABASE_KEY = "sb_publishable_15ODb6irQhChPY1dD_Q5Bg_GIDvxZP-";
+const SUPABASE_URL = "https://tbmyplisunxayrwxzqdt.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRibXlwbGlzdW54YXlyd3h6cWR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMTUyOTIsImV4cCI6MjA4ODc5MTI5Mn0.XipLmbyARpgUaYWT0ry61t8p9WarxAZpzyS-OdvONBA";
 
 const sb = (() => {
   const h = () => ({ "Content-Type": "application/json", "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` });
@@ -12,7 +12,7 @@ const sb = (() => {
   const get  = (table, qs="")     => fetch(url(table,qs),{headers:{...h(),"Prefer":"return=representation","Range-Unit":"items","Range":"0-9999"}}).then(r=>r.json());
   const post = (table, body)      => fetch(url(table),{method:"POST",headers:{...h(),"Prefer":"return=representation"},body:JSON.stringify(body)}).then(r=>r.json());
   const patch= (table, id, col, body) => fetch(url(table,`?${col}=eq.${id}`),{method:"PATCH",headers:{...h(),"Prefer":"return=representation"},body:JSON.stringify(body)}).then(r=>r.json());
-  const del  = (table, id, col="id") => fetch(url(table,`?${col}=eq.${id}`),{method:"DELETE",headers:h()}).then(r=>r.ok);
+  const del  = (table, id, col="id") => fetch(url(table,`?${col}=eq.${encodeURIComponent(id)}`),{method:"DELETE",headers:h()}).then(r=>r.ok);
   const upsert=(table,body,onConflict)=> fetch(url(table,`?on_conflict=${onConflict}`),{method:"POST",headers:{...h(),"Prefer":"resolution=merge-duplicates,return=representation"},body:JSON.stringify(body)}).then(r=>r.json());
 
   return { get, post, patch, del, upsert };
@@ -197,8 +197,9 @@ const buildSchedule = (mov) => {
     if (firstDue <= endDate) dueDates.push({ date: firstDue, partial: startDay !== 1, partialDays: startDay !== 1 ? daysBetween(startDate, firstDue) : null });
     let current = addMonths(firstDue, freq.months);
     while (current <= endDate) { dueDates.push({ date: current, partial: false, partialDays: null }); current = addMonths(current, freq.months); }
+    const lastDayOfEndMonth = lastOfMonth(endDate);
     const lastSched = dueDates.length > 0 ? dueDates[dueDates.length - 1].date : startDate;
-    if (lastSched < endDate) {
+    if (endDate < lastDayOfEndMonth && lastSched < endDate) {
       const days = daysBetween(lastSched, endDate);
       if (days > 0) dueDates.push({ date: endDate, partial: true, partialDays: days });
     }
@@ -274,7 +275,8 @@ const buildSchedule = (mov) => {
   }
 
   const lastScheduled = schedule.length > 0 ? schedule[schedule.length - 1].dueDate : startDate;
-  if (lastScheduled < endDate) {
+  const lastDayOfEndMonth = lastOfMonth(endDate);
+  if (endDate < lastDayOfEndMonth && lastScheduled < endDate) {
     const endDay = parseInt(endDate.split("-")[2]);
     const lastSchedDay = parseInt(lastScheduled.split("-")[2]);
     const dayCoincides2 = endDay === lastSchedDay;
@@ -942,6 +944,10 @@ function CapitalReturnModal({ movId, onConfirm, onClose }) {
 
 function MarkPaidModal({ scheduleItem, capitalMov, onConfirm, onClose }) {
   const [paidDate, setPaidDate] = useState(new Date().toISOString().slice(0,10));
+  const defaultAmount = scheduleItem.isCompound ? (scheduleItem.periodInterest||0) : scheduleItem.amount;
+  const [paidAmount, setPaidAmount] = useState(String(defaultAmount));
+  const isPartial = parseFloat(paidAmount) !== defaultAmount;
+
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:150}} onClick={onClose}>
       <div style={{background:"#ffffff",border:"1px solid #252836",borderRadius:18,padding:28,width:"min(440px,94vw)"}} onClick={e=>e.stopPropagation()}>
@@ -958,15 +964,32 @@ function MarkPaidModal({ scheduleItem, capitalMov, onConfirm, onClose }) {
             <div style={{fontWeight:600,fontSize:14}}>{fmt(capitalMov.amount)} @ {parseFloat(capitalMov.annualRate).toFixed(2)}%</div>
           </div>
           <div style={{textAlign:"right"}}>
-            <div style={{fontSize:12,color:"#6b7094"}}>Monto a pagar</div>
-            <div style={{fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:20,color:"#4ade80"}}>{fmt(scheduleItem.amount)}</div>
+            <div style={{fontSize:12,color:"#6b7094"}}>Monto de la cuota</div>
+            <div style={{fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:20,color:"#4ade80"}}>{fmtDec(defaultAmount)}</div>
           </div>
         </div>
-        <label style={{fontSize:13,fontWeight:500,color:"#6b7094",display:"block",marginBottom:6}}>Fecha de pago *</label>
+        <label style={{fontSize:13,fontWeight:500,color:"#6b7094",display:"block",marginBottom:6}}>Monto pagado *</label>
+        <div style={{position:"relative",marginBottom:6}}>
+          <input className="inp" type="number" step="0.01" min="0"
+            value={paidAmount} onChange={e=>setPaidAmount(e.target.value)}
+            style={{paddingRight:isPartial?100:16}} />
+          {isPartial && <span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:20,background:"#fb923c20",color:"#fb923c"}}>parcial</span>}
+        </div>
+        {isPartial && parseFloat(paidAmount) < defaultAmount && (
+          <div style={{fontSize:11,color:"#fb923c",marginBottom:14}}>
+            ⚠ Pagando menos del monto total ({fmtDec(defaultAmount - parseFloat(paidAmount||0))} pendiente)
+          </div>
+        )}
+        {isPartial && parseFloat(paidAmount) > defaultAmount && (
+          <div style={{fontSize:11,color:"#60a5fa",marginBottom:14}}>
+            ℹ Pagando más del monto total
+          </div>
+        )}
+        <label style={{fontSize:13,fontWeight:500,color:"#6b7094",display:"block",marginBottom:6,marginTop:isPartial?0:14}}>Fecha de pago *</label>
         <input className="inp" type="date" value={paidDate} onChange={e=>setPaidDate(e.target.value)} max={new Date().toISOString().slice(0,10)} style={{marginBottom:22}} />
         <div style={{display:"flex",gap:10}}>
           <button className="btn-ghost" onClick={onClose} style={{flex:1}}>Cancelar</button>
-          <button className="btn-primary" onClick={()=>onConfirm(scheduleItem.scheduleId, paidDate)} style={{flex:2,background:"#4ade80",color:"#0a2a14"}}>✓ Confirmar Pago</button>
+          <button className="btn-primary" onClick={()=>onConfirm(scheduleItem.scheduleId, paidDate, parseFloat(paidAmount)||defaultAmount)} style={{flex:2,background:"#4ade80",color:"#0a2a14"}}>✓ Confirmar Pago</button>
         </div>
       </div>
     </div>
@@ -1968,26 +1991,28 @@ export default function App() {
       setMovements(updatedMovements);
       if (updated.type === "capital_in" && !updated.linkedCapitalId) {
         const newSched = buildSchedule(updated);
-        setSchedules(prev => {
-          const oldSched = prev.filter(s => s.capitalMovId === editId);
-          const originalMov = movements.find(m => m.id === editId);
-          const mergedSched = newSched.map(ns => {
-            const old = oldSched.find(os => os.dueDate === ns.dueDate);
-            if (old?.paid) return { ...ns, paid: true, paidDate: old.paidDate, snapshotCapital: old.snapshotCapital ?? ns.snapshotCapital, snapshotRate: old.snapshotRate ?? ns.snapshotRate };
-            if (effectiveFrom && ns.dueDate < effectiveFrom && old) return old;
-            if (effectiveFrom && ns.dueDate < effectiveFrom && !old) return { ...ns, snapshotCapital: originalMov?.amount ?? ns.snapshotCapital, snapshotRate: originalMov?.annualRate ?? ns.snapshotRate };
-            return ns;
-          });
-          const base = [...prev.filter(s=>s.capitalMovId!==editId), ...mergedSched];
-          finalSchedules = recalcFullSchedule(editId, updatedMovements, base, effectiveFrom);
-          // Persist: delete old unpaid schedules for this mov, upsert new ones
-          const toDelete = oldSched.filter(s=>!s.paid);
-          Promise.all([
-            ...toDelete.map(s=>sb.del("schedules",s.scheduleId,"schedule_id")),
-            ...finalSchedules.filter(s=>s.capitalMovId===editId&&!s.paid).map(s=>sb.upsert("schedules",schedToDB(s),"schedule_id")),
-          ]);
-          return finalSchedules;
+        // Read current schedules directly from state ref before updating
+        const oldSched = schedules.filter(s => s.capitalMovId === editId);
+        const originalMov = movements.find(m => m.id === editId);
+        const mergedSched = newSched.map(ns => {
+          const old = oldSched.find(os => os.dueDate === ns.dueDate);
+          if (old?.paid) return { ...ns, paid: true, paidDate: old.paidDate, snapshotCapital: old.snapshotCapital ?? ns.snapshotCapital, snapshotRate: old.snapshotRate ?? ns.snapshotRate };
+          if (effectiveFrom && ns.dueDate < effectiveFrom && old) return old;
+          if (effectiveFrom && ns.dueDate < effectiveFrom && !old) return { ...ns, snapshotCapital: originalMov?.amount ?? ns.snapshotCapital, snapshotRate: originalMov?.annualRate ?? ns.snapshotRate };
+          return ns;
         });
+        const base = [...schedules.filter(s=>s.capitalMovId!==editId), ...mergedSched];
+        const finalSchedules = recalcFullSchedule(editId, updatedMovements, base, effectiveFrom);
+        setSchedules(finalSchedules);
+        // Persist: delete ALL unpaid schedules for this mov directly from DB, then insert new
+        const deleteFilter = effectiveFrom
+          ? `?capital_mov_id=eq.${encodeURIComponent(editId)}&paid=eq.false&due_date=gte.${effectiveFrom}`
+          : `?capital_mov_id=eq.${encodeURIComponent(editId)}&paid=eq.false`;
+        await fetch(`${SUPABASE_URL}/rest/v1/schedules${deleteFilter}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json", "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+        });
+        await Promise.all(finalSchedules.filter(s=>s.capitalMovId===editId&&!s.paid).map(s=>sb.upsert("schedules",schedToDB(s),"schedule_id")));
         showToast(`Inversión actualizada · cuotas regeneradas ✓`);
       } else if (updated.type === "capital_in" && updated.linkedCapitalId) {
         setSchedules(prev => { finalSchedules=recalcFullSchedule(updated.linkedCapitalId,updatedMovements,prev,effectiveFrom); persistSchedRecalc(finalSchedules,updated.linkedCapitalId,prev); return finalSchedules; });
@@ -2126,9 +2151,9 @@ export default function App() {
     showToast("Movimiento eliminado");
   };
 
-  const handleMarkPaid = async (scheduleId, paidDate) => {
-    setSchedules(prev=>prev.map(s=>s.scheduleId===scheduleId?{...s,paid:true,paidDate}:s));
-    await sb.patch("schedules", scheduleId, "schedule_id", {paid:true, paid_date:paidDate});
+  const handleMarkPaid = async (scheduleId, paidDate, paidAmount) => {
+    setSchedules(prev=>prev.map(s=>s.scheduleId===scheduleId?{...s,paid:true,paidDate,amount:paidAmount??s.amount}:s));
+    await sb.patch("schedules", scheduleId, "schedule_id", {paid:true, paid_date:paidDate, amount:paidAmount??undefined});
     setMarkPaidItem(null);
     showToast("Interés marcado como pagado ✓");
   };
