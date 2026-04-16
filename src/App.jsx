@@ -2,8 +2,8 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from "react"
 
 // ─── Supabase ─────────────────────────────────────────────────────────────────
 // Reemplazá estos valores con los de tu proyecto en supabase.com → Settings → API
-const SUPABASE_URL = "https://urlhcfozaexorcxmhffc.supabase.co";
-const SUPABASE_KEY = "sb_publishable_15ODb6irQhChPY1dD_Q5Bg_GIDvxZP-";
+const SUPABASE_URL = "https://tbmyplisunxayrwxzqdt.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRibXlwbGlzdW54YXlyd3h6cWR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMTUyOTIsImV4cCI6MjA4ODc5MTI5Mn0.XipLmbyARpgUaYWT0ry61t8p9WarxAZpzyS-OdvONBA";
 
 const sb = (() => {
   const h = () => ({ "Content-Type": "application/json", "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` });
@@ -523,81 +523,85 @@ function ClientPortal({ investor, movements, schedules, onLogout }) {
                 <span style={{fontSize:18,color:"#7c6af7",transform:isExp?"rotate(90deg)":"rotate(0)",transition:"transform 0.2s",lineHeight:1,flexShrink:0}}>›</span>
               </div>
               {isExp && (
-                <div style={{borderTop:"1px solid #f0f2f8",padding:"16px 20px"}}>
-                  {/* Capital summary line */}
-                  <div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:14,padding:"10px 14px",background:"#e8eaf8",borderRadius:10,fontSize:12}}>
-                    <span style={{color:"#6b7094"}}>Capital base: <strong style={{color:"#1a1d2e"}}>{fmt2(mov.amount)}</strong></span>
-                    {linked.length>0 && <span style={{color:"#6b7094"}}>+ Aportes: <strong style={{color:"#4ade80"}}>+{fmt2(linked.reduce((s,m)=>s+m.amount,0))}</strong></span>}
-                    {totalOut>0 && <span style={{color:"#6b7094"}}>− Retiros: <strong style={{color:"#f87171"}}>-{fmt2(totalOut)}</strong></span>}
-                    <span style={{color:"#6b7094"}}>= Saldo: <strong style={{color:"#7c6af7"}}>{fmt2(totalCap - totalOut)}</strong></span>
-                  </div>
-
-                  {/* Merged timeline */}
-                  <div style={{fontSize:11,fontWeight:700,color:"#6b7094",letterSpacing:1,marginBottom:10}}>MOVIMIENTOS</div>
-                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
-
-                    {/* Inversión inicial — siempre primera */}
-                    <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,background:"#dcfce7",borderLeft:"3px solid #4ade80"}}>
-                      <div style={{width:8,height:8,borderRadius:"50%",background:"#4ade80",flexShrink:0}} />
-                      <div style={{fontSize:12,color:"#6b7094",minWidth:80,fontFamily:"'DM Mono',monospace"}}>{fmtD2(mov.date)}</div>
-                      <div style={{flex:1,fontSize:12,fontWeight:600,color:"#1a1d2e"}}>Inversión inicial{mov.empresa?` · ${mov.empresa}`:""}{mov.note?` · ${mov.note}`:""}</div>
-                      <div style={{fontWeight:700,fontSize:13,fontFamily:"'DM Mono',monospace",color:"#16a34a"}}>+{fmt2(mov.amount)}</div>
-                      {mov.attachments?.length>0 && <button onClick={()=>setViewingAtts(mov.attachments)} style={{fontSize:11,padding:"2px 8px",borderRadius:20,fontWeight:600,background:"#eef0fb",color:"#7c6af7",border:"none",cursor:"pointer",fontFamily:"inherit"}}>📎 {mov.attachments.length}</button>}
-                      <div style={{fontSize:11,padding:"2px 8px",borderRadius:20,fontWeight:600,background:"#dcfce7",color:"#15803d"}}>Inversión</div>
-                    </div>
-
-                    {[
-                      ...linked.map(m=>({date:m.date,kind:"deposit",label:`Aporte adicional${m.note?` · ${m.note}`:""}`,amount:m.amount,atts:m.attachments})),
-                      ...outs.map(m=>({date:m.date,kind:"withdrawal",label:`Retiro${m.note?` · ${m.note}`:""}`,amount:m.amount,atts:m.attachments})),
-                      ...movSched.map(s=>({date:s.dueDate,kind:"interest",label:s.isFinal?"Total a cobrar":s.partial?"Interés proporcional":"Interés",amount:s.amount,schedItem:s})),
-                    ].sort((a,b)=>new Date(a.date)-new Date(b.date)).map((item,i)=>{
-                      if(item.kind==="interest"){
-                        const s = item.schedItem;
-                        const isOverdue = !s.paid && s.dueDate < today && !s.isCompound;
-                        return (
-                          <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,background:s.paid?"#dcfce7":isOverdue?"#fed7aa":"#e8eaf8"}}>
-                            <div style={{width:8,height:8,borderRadius:"50%",background:s.paid?"#4ade80":isOverdue?"#fb923c":"#cbd5e1",flexShrink:0}} />
-                            <div style={{fontSize:12,color:"#6b7094",minWidth:80,fontFamily:"'DM Mono',monospace"}}>{fmtD2(s.dueDate)}</div>
-                            <div style={{flex:1,fontSize:12,display:"flex",gap:4,flexWrap:"wrap"}}>
-                              <span>{item.label}</span>
-                              {s.partial&&<span style={{fontSize:10,background:"#fef3c7",color:"#92400e",borderRadius:20,padding:"1px 6px"}}>proporcional</span>}
-                              {s.isCompound&&!s.isFinal&&<span style={{fontSize:10,background:"#dbeafe",color:"#1d4ed8",borderRadius:20,padding:"1px 6px"}}>capitalizable</span>}
-                              {s.isFinal&&<span style={{fontSize:10,background:"#7c6af720",color:"#7c6af7",borderRadius:20,padding:"1px 6px"}}>total final</span>}
-                            </div>
-                            <div style={{fontWeight:700,fontSize:13,fontFamily:"'DM Mono',monospace",color:s.paid?"#16a34a":isOverdue?"#ea580c":"#1a1d2e"}}>{fmtDec(s.amount)}</div>
-                            <div style={{fontSize:11,padding:"2px 8px",borderRadius:20,fontWeight:600,background:s.paid?"#dcfce7":isOverdue?"#fff7ed":s.isCompound&&!s.paid&&s.dueDate<today?"#ede9fe":"#f3f4f6",color:s.paid?"#15803d":isOverdue?"#ea580c":s.isCompound&&!s.paid&&s.dueDate<today?"#7c6af7":"#6b7094"}}>{s.paid?"Cobrado":isOverdue?"Vencido":s.isCompound&&!s.paid&&s.dueDate<today?"Devengado":"Pendiente"}</div>
+                <div style={{borderTop:"1px solid #eef0f8",padding:"12px 16px 14px",background:"#fafbff",borderRadius:"0 0 12px 12px"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#6b7094",letterSpacing:1,marginBottom:10,textTransform:"uppercase"}}>Movimientos cronológicos</div>
+                  {[
+                    ...linked.map(m=>({date:m.date,kind:"deposit",data:m})),
+                    ...outs.map(m=>({date:m.date,kind:"withdrawal",data:m})),
+                    ...movSched.map(s=>({date:s.dueDate,kind:"interest",data:s})),
+                  ].sort((a,b)=>new Date(a.date)-new Date(b.date)).map((item,i)=>{
+                    if(item.kind==="interest"){
+                      const s=item.data;
+                      const isOverdue=!s.paid&&s.dueDate<today&&!s.isCompound;
+                      const isFinal=s.isFinal;
+                      const isCompound=s.isCompound;
+                      return (
+                        <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:10,
+                          background:isFinal?"#ede9fe":s.paid?"#dcfce7":isOverdue?"#fee2e2":"#e8eaf8",
+                          border:`1px solid ${isFinal?"#7c6af750":s.paid?"#4ade8050":isOverdue?"#f8717150":"#c7cbea"}`,marginBottom:6}}>
+                          <div style={{width:30,height:30,borderRadius:9,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,
+                            background:isFinal?"#7c6af718":s.paid?"#4ade8018":isOverdue?"#f8717118":"#fb923c18",
+                            color:isFinal?"#7c6af7":s.paid?"#4ade80":isOverdue?"#f87171":"#fb923c"}}>
+                            {isFinal?"Σ":s.paid?"✓":isOverdue?"!":"%"}
                           </div>
-                        );
-                      }
-                      if(item.kind==="deposit") return (
-                        <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,background:"#dbeafe"}}>
-                          <div style={{width:8,height:8,borderRadius:"50%",background:"#38bdf8",flexShrink:0}} />
-                          <div style={{fontSize:12,color:"#6b7094",minWidth:80,fontFamily:"'DM Mono',monospace"}}>{fmtD2(item.date)}</div>
-                          <div style={{flex:1,fontSize:12}}>{item.label}</div>
-                          <div style={{fontWeight:700,fontSize:13,fontFamily:"'DM Mono',monospace",color:"#0369a1"}}>+{fmt2(item.amount)}</div>
-                          {item.atts?.length>0 && <button onClick={()=>setViewingAtts(item.atts)} style={{fontSize:11,padding:"2px 8px",borderRadius:20,fontWeight:600,background:"#eef0fb",color:"#7c6af7",border:"none",cursor:"pointer",fontFamily:"inherit"}}>📎 {item.atts.length}</button>}
-                          <div style={{fontSize:11,padding:"2px 8px",borderRadius:20,fontWeight:600,background:"#e0f2fe",color:"#0369a1"}}>Aporte</div>
+                          <div style={{flex:1}}>
+                            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                              <span style={{fontWeight:600,fontSize:14,fontFamily:"'DM Mono',monospace",color:s.paid?"#4ade80":isOverdue?"#f87171":"#1a1d2e"}}>
+                                {fmtDec(isCompound?(s.periodInterest||0):s.amount)}
+                              </span>
+                              {s.scheduleId?.endsWith('_res')&&<span style={{fontSize:10,padding:"2px 7px",borderRadius:20,fontWeight:600,background:"#fb923c15",color:"#fb923c",border:"1px solid #fb923c30"}}>saldo pendiente</span>}
+                              {s.partial&&!s.scheduleId?.endsWith('_res')&&<span style={{fontSize:10,padding:"2px 7px",borderRadius:20,fontWeight:600,background:"#7c6af715",color:"#7c6af7",border:"1px solid #7c6af730"}}>proporcional</span>}
+                              {isFinal&&<span style={{fontSize:11,padding:"2px 7px",borderRadius:20,fontWeight:600,background:"#7c6af720",color:"#7c6af7"}}>Capital + intereses</span>}
+                              <span style={{fontSize:11,padding:"2px 7px",borderRadius:20,fontWeight:600,
+                                background:s.paid?"#4ade8020":isOverdue?"#f8717120":"#fb923c20",
+                                color:s.paid?"#4ade80":isOverdue?"#f87171":"#fb923c"}}>
+                                {s.paid?"Cobrado":isOverdue?"Vencido":"Pendiente"}
+                              </span>
+                            </div>
+                            <div style={{fontSize:12,color:"#6b7094",marginTop:2}}>
+                              Venc.: {fmtD2(s.dueDate)}
+                              {s.paid&&s.paidDate&&<span style={{marginLeft:8,color:"#4ade8099"}}>· Cobrado el {fmtD2(s.paidDate)}</span>}
+                            </div>
+                          </div>
                         </div>
                       );
-                      if(item.kind==="withdrawal") return (
-                        <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,background:"#fee2e2"}}>
-                          <div style={{width:8,height:8,borderRadius:"50%",background:"#f87171",flexShrink:0}} />
-                          <div style={{fontSize:12,color:"#6b7094",minWidth:80,fontFamily:"'DM Mono',monospace"}}>{fmtD2(item.date)}</div>
-                          <div style={{flex:1,fontSize:12}}>{item.label}</div>
-                          <div style={{fontWeight:700,fontSize:13,fontFamily:"'DM Mono',monospace",color:"#dc2626"}}>-{fmt2(item.amount)}</div>
-                          {item.atts?.length>0 && <button onClick={()=>setViewingAtts(item.atts)} style={{fontSize:11,padding:"2px 8px",borderRadius:20,fontWeight:600,background:"#eef0fb",color:"#7c6af7",border:"none",cursor:"pointer",fontFamily:"inherit"}}>📎 {item.atts.length}</button>}
-                          <div style={{fontSize:11,padding:"2px 8px",borderRadius:20,fontWeight:600,background:"#fee2e2",color:"#dc2626"}}>Retiro</div>
+                    }
+                    if(item.kind==="deposit") return (
+                      <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:10,background:"#dcfce7",border:"1px solid #4ade8050",marginBottom:6}}>
+                        <div style={{width:30,height:30,borderRadius:8,background:"#4ade8018",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"#4ade80",flexShrink:0}}>↑</div>
+                        <div style={{flex:1}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                            <span style={{fontWeight:700,fontSize:13,fontFamily:"'DM Mono',monospace",color:"#4ade80"}}>+ {fmt2(item.data.amount)}</span>
+                            <span style={{fontSize:10,padding:"2px 7px",borderRadius:20,fontWeight:700,background:"#4ade8018",color:"#4ade80",border:"1px solid #4ade8030"}}>Aporte adicional</span>
+                            {item.data.note&&<span style={{fontSize:12,color:"#6b7094"}}>{item.data.note}</span>}
+                          </div>
+                          <div style={{fontSize:12,color:"#6b7094",marginTop:2}}>{fmtD2(item.date)}</div>
                         </div>
-                      );
-                      return null;
-                    })}
-
-                    {/* Saldo final — siempre último */}
-                    <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:8,background:"#1a1d2e",marginTop:4}}>
-                      <div style={{flex:1,fontSize:12,fontWeight:700,color:"#a0a4c0",letterSpacing:.5}}>SALDO CAPITAL AL VENCIMIENTO</div>
-                      <div style={{fontWeight:700,fontSize:14,fontFamily:"'DM Mono',monospace",color:"#fff"}}>{fmt2(totalCap - totalOut)}</div>
+                      </div>
+                    );
+                    if(item.kind==="withdrawal") return (
+                      <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:10,background:"#fee2e2",border:"1px solid #f8717150",marginBottom:6}}>
+                        <div style={{width:30,height:30,borderRadius:8,background:"#f8717118",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"#f87171",flexShrink:0}}>↓</div>
+                        <div style={{flex:1}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                            <span style={{fontWeight:700,fontSize:13,fontFamily:"'DM Mono',monospace",color:"#f87171"}}>− {fmt2(item.data.amount)}</span>
+                            <span style={{fontSize:10,padding:"2px 7px",borderRadius:20,fontWeight:700,background:"#f8717118",color:"#f87171",border:"1px solid #f8717130"}}>Retiro</span>
+                            {item.data.note&&<span style={{fontSize:12,color:"#6b7094"}}>{item.data.note}</span>}
+                          </div>
+                          <div style={{fontSize:12,color:"#6b7094",marginTop:2}}>{fmtD2(item.date)}</div>
+                        </div>
+                      </div>
+                    );
+                    return null;
+                  })}
+                  {/* Saldo capital */}
+                  <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,background:mov.capitalPaid?"#f0fdf4":"#f5f4ff",border:`1px solid ${mov.capitalPaid?"#4ade8040":"#7c6af730"}`,marginTop:8}}>
+                    <div style={{width:30,height:30,borderRadius:8,background:mov.capitalPaid?"#4ade8018":"#7c6af718",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:mov.capitalPaid?"#4ade80":"#7c6af7",flexShrink:0}}>{mov.capitalPaid?"✓":"Σ"}</div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:12,fontWeight:600,color:mov.capitalPaid?"#16a34a":"#7c6af7"}}>Saldo de capital al vencimiento</div>
+                      <div style={{fontSize:11,color:"#6b7094",marginTop:1}}>{fmt2(totalCap - totalOut)} · {mov.capitalPaid?`Devuelto el ${fmtD2(mov.capitalPaidDate)}`:"Pendiente de devolución"}</div>
                     </div>
-
+                    <div style={{fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:16,color:mov.capitalPaid?"#16a34a":"#7c6af7"}}>{fmt2(totalCap - totalOut)}</div>
                   </div>
                 </div>
               )}
@@ -1181,14 +1185,25 @@ function StatementModal({ investor, movements, schedules, onClose }) {
       ...deposits.filter(m=>inRange(m.date)).map(m=>({date:m.date,type:"Aporte adicional",typeClass:"deposit",desc:m.note||"Aporte de capital",credit:m.amount,debit:null})),
       ...capitalOuts.filter(m=>inRange(m.date)).map(m=>({date:m.date,type:"Retiro de capital",typeClass:"cap-out",desc:m.note||"Retiro de capital",credit:null,debit:m.amount})),
       ...capitalIns.filter(m=>m.capitalPaid&&m.capitalPaidDate&&inRange(m.capitalPaidDate)).map(m=>({date:m.capitalPaidDate,type:"Dev. capital",typeClass:"cap-out",desc:`Devolución capital${m.empresa?` · ${m.empresa}`:""}`,credit:null,debit:m.amount})),
-      ...relevantSched.filter(s=>inRange(s.dueDate)).map(s=>{
+      // Group intereses devengados by date+empresa
+      ...Object.values(relevantSched.filter(s=>inRange(s.dueDate)).reduce((acc,s)=>{
         const cap=invMovs.find(m=>m.id===s.capitalMovId);
-        return {date:s.dueDate,type:"Interés devengado",typeClass:"interest",desc:`Interés ${cap?.empresa||cap?.note||""}`.trim(),credit:s.amount,debit:null};
-      }),
-      ...relevantSched.filter(s=>s.paid&&inRange(s.paidDate||s.dueDate)).map(s=>{
+        const empresa=cap?.empresa||cap?.note||"";
+        const key=`${s.dueDate}_${empresa}`;
+        if(!acc[key]) acc[key]={date:s.dueDate,type:"Interés devengado",typeClass:"interest",desc:`Interés ${empresa}`.trim(),credit:0,debit:null};
+        acc[key].credit+=s.amount;
+        return acc;
+      },{})),
+      // Group intereses pagados by paidDate+empresa
+      ...Object.values(relevantSched.filter(s=>s.paid&&inRange(s.paidDate||s.dueDate)).reduce((acc,s)=>{
         const cap=invMovs.find(m=>m.id===s.capitalMovId);
-        return {date:s.paidDate||s.dueDate,type:"Interés pagado",typeClass:"interest-paid",desc:`Cobro interés ${cap?.empresa||cap?.note||""}`.trim(),credit:null,debit:s.amount};
-      }),
+        const empresa=cap?.empresa||cap?.note||"";
+        const date=s.paidDate||s.dueDate;
+        const key=`${date}_${empresa}_paid`;
+        if(!acc[key]) acc[key]={date,type:"Interés pagado",typeClass:"interest-paid",desc:`Cobro interés ${empresa}`.trim(),credit:null,debit:0};
+        acc[key].debit+=s.amount;
+        return acc;
+      },{})),
     ].sort((a,b)=>new Date(a.date)-new Date(b.date) || (a.credit?-1:1));
 
     let running = openingBalance;
@@ -1940,7 +1955,36 @@ export default function App() {
 
       let newAmount;
       if (s.partial && s.partialDays) {
-        newAmount = parseFloat((effectiveCapital * capitalMov.annualRate / 100 / 365 * s.partialDays).toFixed(2));
+        // For partial cuotas, split the period by deposits/withdrawals that occurred within it
+        const periodStart = capitalMov.firstDueDate
+          ? capitalMov.date
+          : capitalMov.date;
+        const periodEnd = s.dueDate;
+        // Get all movements (deposits + withdrawals) that happened WITHIN the partial period
+        const movementsInPeriod = [
+          ...allDeposits.filter(d => d.date > capitalMov.date && d.date < periodEnd),
+          ...allWithdrawals.filter(w => w.date > capitalMov.date && w.date < periodEnd),
+        ].sort((a,b) => new Date(a.date) - new Date(b.date));
+
+        if (movementsInPeriod.length === 0) {
+          // No movements within period — use effectiveCapital for all days
+          newAmount = parseFloat((effectiveCapital * capitalMov.annualRate / 100 / 365 * s.partialDays).toFixed(2));
+        } else {
+          // Split period into segments and calculate interest for each
+          const segments = [];
+          let segStart = capitalMov.date;
+          let segCapital = capitalMov.amount;
+          for (const mov of movementsInPeriod) {
+            const days = Math.round((new Date(mov.date+"T12:00:00") - new Date(segStart+"T12:00:00")) / 86400000);
+            if (days > 0) segments.push({ days, capital: segCapital });
+            segStart = mov.date;
+            segCapital += mov.type === "capital_in" ? mov.amount : -mov.amount;
+          }
+          // Last segment to periodEnd
+          const lastDays = Math.round((new Date(periodEnd+"T12:00:00") - new Date(segStart+"T12:00:00")) / 86400000);
+          if (lastDays > 0) segments.push({ days: lastDays, capital: segCapital });
+          newAmount = parseFloat(segments.reduce((acc, seg) => acc + seg.capital * capitalMov.annualRate / 100 / 365 * seg.days, 0).toFixed(2));
+        }
       } else {
         newAmount = parseFloat(((effectiveCapital * capitalMov.annualRate / 100 / 12) * periodMonths).toFixed(2));
       }
