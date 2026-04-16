@@ -2079,8 +2079,46 @@ export default function App() {
         setSchedules(prev => [...prev, ...sched]);
         showToast(`Inversión registrada · ${sched.length} cuotas generadas ✓`);
       } else if (updated.type === "capital_in" && updated.linkedCapitalId) {
-        setSchedules(prev => { finalSchedules=recalcFullSchedule(updated.linkedCapitalId,updatedMovements,prev); persistSchedRecalc(finalSchedules,updated.linkedCapitalId,prev); return finalSchedules; });
-        showToast("Aporte adicional registrado · cuotas recalculadas ✓");
+        // Check if deposit needs a proportional cuota
+        const capitalMov = updatedMovements.find(m => m.id === updated.linkedCapitalId);
+        if (capitalMov) {
+          const depositDate = updated.date;
+          const payDay = parseInt((capitalMov.firstDueDate || capitalMov.date).split("-")[2]);
+          const depositDay = parseInt(depositDate.split("-")[2]);
+          // Find next payment date after deposit
+          const addMonths = (s, mo) => { const d = new Date(s+"T12:00:00"), day=d.getDate(); d.setMonth(d.getMonth()+mo); d.setDate(Math.min(day,new Date(d.getFullYear(),d.getMonth()+1,0).getDate())); return d.toISOString().slice(0,10); };
+          const freq = FREQUENCIES.find(f=>f.key===(capitalMov.frequency||"monthly"))||FREQUENCIES[0];
+          const periodMonths = freq.months || 1;
+          // Find the next scheduled due date after deposit
+          const existingScheds = schedules.filter(s=>s.capitalMovId===updated.linkedCapitalId&&!s.paid&&s.dueDate>depositDate).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+          const nextDueDate = existingScheds[0]?.dueDate;
+          if (nextDueDate && depositDay !== parseInt(nextDueDate.split("-")[2])) {
+            // Days from deposit to next payment date
+            const days = Math.round((new Date(nextDueDate+"T12:00:00")-new Date(depositDate+"T12:00:00"))/86400000);
+            if (days > 0 && days < periodMonths * 31) {
+              const propAmount = parseFloat((updated.amount * capitalMov.annualRate / 100 / 365 * days).toFixed(2));
+              const propId = `${updated.id}_prop`;
+              const propSched = { scheduleId: propId, capitalMovId: updated.linkedCapitalId, dueDate: nextDueDate, amount: propAmount, partial: true, partialDays: days, paid: false, paidDate: null, snapshotCapital: updated.amount, snapshotRate: capitalMov.annualRate };
+              await sb.post("schedules", schedToDB(propSched));
+              setSchedules(prev => {
+                const withProp = [...prev, propSched];
+                finalSchedules = recalcFullSchedule(updated.linkedCapitalId, updatedMovements, withProp);
+                persistSchedRecalc(finalSchedules, updated.linkedCapitalId, withProp);
+                return finalSchedules;
+              });
+              showToast("Aporte registrado · cuota proporcional generada ✓");
+            } else {
+              setSchedules(prev => { finalSchedules=recalcFullSchedule(updated.linkedCapitalId,updatedMovements,prev); persistSchedRecalc(finalSchedules,updated.linkedCapitalId,prev); return finalSchedules; });
+              showToast("Aporte adicional registrado · cuotas recalculadas ✓");
+            }
+          } else {
+            setSchedules(prev => { finalSchedules=recalcFullSchedule(updated.linkedCapitalId,updatedMovements,prev); persistSchedRecalc(finalSchedules,updated.linkedCapitalId,prev); return finalSchedules; });
+            showToast("Aporte adicional registrado · cuotas recalculadas ✓");
+          }
+        } else {
+          setSchedules(prev => { finalSchedules=recalcFullSchedule(updated.linkedCapitalId,updatedMovements,prev); persistSchedRecalc(finalSchedules,updated.linkedCapitalId,prev); return finalSchedules; });
+          showToast("Aporte adicional registrado · cuotas recalculadas ✓");
+        }
       } else if (updated.type === "capital_out" && updated.linkedCapitalId) {
         setSchedules(prev => { finalSchedules=recalcFullSchedule(updated.linkedCapitalId,updatedMovements,prev); persistSchedRecalc(finalSchedules,updated.linkedCapitalId,prev); return finalSchedules; });
         showToast("Retiro registrado · cuotas recalculadas ✓");
