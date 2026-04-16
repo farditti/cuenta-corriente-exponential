@@ -2133,7 +2133,7 @@ export default function App() {
 
   // Helper: persist recalculated schedules for a capitalMovId (only unpaid ones change)
   const persistSchedRecalc = (newAllScheds, capitalMovId, prevAllScheds) => {
-    const prevForMov = prevAllScheds.filter(s=>s.capitalMovId===capitalMovId&&!s.paid);
+    const prevForMov = prevAllScheds.filter(s=>s.capitalMovId===capitalMovId&&!s.paid&&!s.scheduleId.endsWith('_prop'));
     const newForMov  = newAllScheds.filter(s=>s.capitalMovId===capitalMovId&&!s.paid);
     Promise.all([
       ...prevForMov.map(s=>sb.del("schedules",s.scheduleId,"schedule_id")),
