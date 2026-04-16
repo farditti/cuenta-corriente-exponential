@@ -1986,7 +1986,37 @@ export default function App() {
           newAmount = parseFloat(segments.reduce((acc, seg) => acc + seg.capital * capitalMov.annualRate / 100 / 365 * seg.days, 0).toFixed(2));
         }
       } else {
-        newAmount = parseFloat(((effectiveCapital * capitalMov.annualRate / 100 / 12) * periodMonths).toFixed(2));
+        // Check if any deposit/withdrawal happened mid-period (not on the same day as due date)
+        const prevDueDate = (() => {
+          // Estimate previous due date = dueDate minus periodMonths
+          const d = new Date(s.dueDate+"T12:00:00");
+          d.setMonth(d.getMonth() - periodMonths);
+          return d.toISOString().slice(0,10);
+        })();
+        const midPeriodMovements = [
+          ...allDeposits.filter(d => d.date > prevDueDate && d.date < s.dueDate && parseInt(d.date.split("-")[2]) !== parseInt(s.dueDate.split("-")[2])),
+          ...allWithdrawals.filter(w => w.date > prevDueDate && w.date < s.dueDate && parseInt(w.date.split("-")[2]) !== parseInt(s.dueDate.split("-")[2])),
+        ].sort((a,b) => new Date(a.date) - new Date(b.date));
+
+        if (midPeriodMovements.length > 0) {
+          // Calculate by segments: capital before deposit × full days + deposit × remaining days
+          const capitalBeforeDeposits = allDeposits.filter(d => d.date <= prevDueDate).reduce((acc,d)=>acc+d.amount,0);
+          const withdrawalsBeforeDeposits = allWithdrawals.filter(w => w.date <= prevDueDate).reduce((acc,w)=>acc+w.amount,0);
+          let segCapital = capitalMov.amount + capitalBeforeDeposits - withdrawalsBeforeDeposits;
+          let segStart = prevDueDate;
+          let totalInterest = 0;
+          for (const mov of midPeriodMovements) {
+            const days = Math.round((new Date(mov.date+"T12:00:00") - new Date(segStart+"T12:00:00")) / 86400000);
+            if (days > 0) totalInterest += segCapital * capitalMov.annualRate / 100 / 365 * days;
+            segStart = mov.date;
+            segCapital += mov.type === "capital_in" ? mov.amount : -mov.amount;
+          }
+          const lastDays = Math.round((new Date(s.dueDate+"T12:00:00") - new Date(segStart+"T12:00:00")) / 86400000);
+          if (lastDays > 0) totalInterest += segCapital * capitalMov.annualRate / 100 / 365 * lastDays;
+          newAmount = parseFloat(totalInterest.toFixed(2));
+        } else {
+          newAmount = parseFloat(((effectiveCapital * capitalMov.annualRate / 100 / 12) * periodMonths).toFixed(2));
+        }
       }
 
       return {
@@ -2079,37 +2109,8 @@ export default function App() {
         setSchedules(prev => [...prev, ...sched]);
         showToast(`Inversión registrada · ${sched.length} cuotas generadas ✓`);
       } else if (updated.type === "capital_in" && updated.linkedCapitalId) {
-        const capitalMov = updatedMovements.find(m => m.id === updated.linkedCapitalId);
-        const depositDate = updated.date;
-        const depositDay = parseInt(depositDate.split("-")[2]);
-        const nextSched = schedules
-          .filter(s=>s.capitalMovId===updated.linkedCapitalId&&!s.paid&&s.dueDate>depositDate)
-          .sort((a,b)=>a.dueDate.localeCompare(b.dueDate))[0];
-        const nextDueDay = nextSched ? parseInt(nextSched.dueDate.split("-")[2]) : null;
-
-        if (capitalMov && nextSched && nextDueDay && depositDay !== nextDueDay) {
-          const days = Math.round((new Date(nextSched.dueDate+"T12:00:00")-new Date(depositDate+"T12:00:00"))/86400000);
-          const propAmount = parseFloat((updated.amount * capitalMov.annualRate / 100 / 365 * days).toFixed(2));
-          // Recalc using movements WITHOUT the new deposit for the next cuota amount
-          const movementsWithoutDeposit = updatedMovements.filter(m=>m.id!==updated.id);
-          const recalced = recalcFullSchedule(updated.linkedCapitalId, updatedMovements, schedules);
-          const withProp = recalced.map(s => {
-            if (s.scheduleId === nextSched.scheduleId && !s.paid) {
-              // Recalc this cuota using capital BEFORE deposit
-              const capBefore = recalcFullSchedule(updated.linkedCapitalId, movementsWithoutDeposit, schedules)
-                .find(x=>x.scheduleId===nextSched.scheduleId);
-              const baseAmount = capBefore ? capBefore.amount : s.amount;
-              return { ...s, amount: parseFloat((baseAmount + propAmount).toFixed(2)), adjustedByDeposit: true, originalAmount: s.originalAmount ?? nextSched.amount };
-            }
-            return s;
-          });
-          setSchedules(withProp);
-          persistSchedRecalc(withProp, updated.linkedCapitalId, schedules);
-          showToast(`Aporte registrado · interés proporcional (${days}d) sumado ✓`);
-        } else {
-          setSchedules(prev => { finalSchedules=recalcFullSchedule(updated.linkedCapitalId,updatedMovements,prev); persistSchedRecalc(finalSchedules,updated.linkedCapitalId,prev); return finalSchedules; });
-          showToast("Aporte adicional registrado · cuotas recalculadas ✓");
-        }
+        setSchedules(prev => { finalSchedules=recalcFullSchedule(updated.linkedCapitalId,updatedMovements,prev); persistSchedRecalc(finalSchedules,updated.linkedCapitalId,prev); return finalSchedules; });
+        showToast("Aporte adicional registrado · cuotas recalculadas ✓");
       } else if (updated.type === "capital_out" && updated.linkedCapitalId) {
         setSchedules(prev => { finalSchedules=recalcFullSchedule(updated.linkedCapitalId,updatedMovements,prev); persistSchedRecalc(finalSchedules,updated.linkedCapitalId,prev); return finalSchedules; });
         showToast("Retiro registrado · cuotas recalculadas ✓");
