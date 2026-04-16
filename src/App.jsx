@@ -2082,27 +2082,30 @@ export default function App() {
         const capitalMov = updatedMovements.find(m => m.id === updated.linkedCapitalId);
         const depositDate = updated.date;
         const depositDay = parseInt(depositDate.split("-")[2]);
-        // Find next unpaid due date after deposit
         const nextSched = schedules
           .filter(s=>s.capitalMovId===updated.linkedCapitalId&&!s.paid&&s.dueDate>depositDate)
           .sort((a,b)=>a.dueDate.localeCompare(b.dueDate))[0];
         const nextDueDay = nextSched ? parseInt(nextSched.dueDate.split("-")[2]) : null;
 
         if (capitalMov && nextSched && nextDueDay && depositDay !== nextDueDay) {
-          // Deposit mid-period: add proportional interest to next cuota
           const days = Math.round((new Date(nextSched.dueDate+"T12:00:00")-new Date(depositDate+"T12:00:00"))/86400000);
           const propAmount = parseFloat((updated.amount * capitalMov.annualRate / 100 / 365 * days).toFixed(2));
-          // Recalc full schedule first, then add proportional to next cuota
+          // Recalc using movements WITHOUT the new deposit for the next cuota amount
+          const movementsWithoutDeposit = updatedMovements.filter(m=>m.id!==updated.id);
           const recalced = recalcFullSchedule(updated.linkedCapitalId, updatedMovements, schedules);
           const withProp = recalced.map(s => {
             if (s.scheduleId === nextSched.scheduleId && !s.paid) {
-              return { ...s, amount: parseFloat((s.amount + propAmount).toFixed(2)), adjustedByDeposit: true, originalAmount: s.originalAmount ?? s.amount };
+              // Recalc this cuota using capital BEFORE deposit
+              const capBefore = recalcFullSchedule(updated.linkedCapitalId, movementsWithoutDeposit, schedules)
+                .find(x=>x.scheduleId===nextSched.scheduleId);
+              const baseAmount = capBefore ? capBefore.amount : s.amount;
+              return { ...s, amount: parseFloat((baseAmount + propAmount).toFixed(2)), adjustedByDeposit: true, originalAmount: s.originalAmount ?? nextSched.amount };
             }
             return s;
           });
           setSchedules(withProp);
           persistSchedRecalc(withProp, updated.linkedCapitalId, schedules);
-          showToast(`Aporte registrado · interés proporcional (${days}d) sumado a cuota del ${nextSched.dueDate} ✓`);
+          showToast(`Aporte registrado · interés proporcional (${days}d) sumado ✓`);
         } else {
           setSchedules(prev => { finalSchedules=recalcFullSchedule(updated.linkedCapitalId,updatedMovements,prev); persistSchedRecalc(finalSchedules,updated.linkedCapitalId,prev); return finalSchedules; });
           showToast("Aporte adicional registrado · cuotas recalculadas ✓");
