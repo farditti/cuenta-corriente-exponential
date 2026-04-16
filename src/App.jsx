@@ -2,8 +2,8 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from "react"
 
 // ─── Supabase ─────────────────────────────────────────────────────────────────
 // Reemplazá estos valores con los de tu proyecto en supabase.com → Settings → API
-const SUPABASE_URL = "https://tbmyplisunxayrwxzqdt.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRibXlwbGlzdW54YXlyd3h6cWR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMTUyOTIsImV4cCI6MjA4ODc5MTI5Mn0.XipLmbyARpgUaYWT0ry61t8p9WarxAZpzyS-OdvONBA";
+const SUPABASE_URL = "https://urlhcfozaexorcxmhffc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_15ODb6irQhChPY1dD_Q5Bg_GIDvxZP-";
 
 const sb = (() => {
   const h = () => ({ "Content-Type": "application/json", "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` });
