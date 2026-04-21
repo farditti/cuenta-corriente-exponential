@@ -361,10 +361,15 @@ function ClientPortal({ investor, movements, schedules, onLogout }) {
   const allLinked    = invMovs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&allCapIds.includes(m.linkedCapitalId));
   const allOuts      = invMovs.filter(m=>m.type==="capital_out"&&allCapIds.includes(m.linkedCapitalId));
 
+  const netCap = (mov) => {
+    const deps = invMovs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId===mov.id).reduce((s,m)=>s+m.amount,0);
+    const wits = invMovs.filter(m=>m.type==="capital_out"&&m.linkedCapitalId===mov.id).reduce((s,m)=>s+m.amount,0);
+    return mov.amount + deps - wits;
+  };
   const activeCapIn  = [...activeCapIns,...activeLinked].reduce((s,m)=>s+m.amount,0);
-  const activeCapOut = [...activeOuts,...activeCapIns.filter(m=>m.capitalPaid)].reduce((s,m)=>s+m.amount,0);
+  const activeCapOut = [...activeOuts].reduce((s,m)=>s+m.amount,0) + activeCapIns.filter(m=>m.capitalPaid).reduce((s,m)=>s+netCap(m),0);
   const histCapIn    = [...activeCapIns,...histCapIns,...allLinked].reduce((s,m)=>s+m.amount,0);
-  const histCapOut   = [...allOuts,...[...activeCapIns,...histCapIns].filter(m=>m.capitalPaid)].reduce((s,m)=>s+m.amount,0);
+  const histCapOut   = [...allOuts].reduce((s,m)=>s+m.amount,0) + [...activeCapIns,...histCapIns].filter(m=>m.capitalPaid).reduce((s,m)=>s+netCap(m),0);
 
   const activeSched = schedules.filter(s=>activeIds.includes(s.capitalMovId));
   const allSched    = schedules.filter(s=>allCapIds.includes(s.capitalMovId));
@@ -1846,12 +1851,17 @@ export default function App() {
     const histOuts     = movs.filter(m=>m.type==="capital_out"&&histIds.includes(m.linkedCapitalId));
     const allLinked    = movs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&allCapIds.includes(m.linkedCapitalId));
     const allOuts      = movs.filter(m=>m.type==="capital_out"&&allCapIds.includes(m.linkedCapitalId));
+    const netCapital = (mov) => {
+      const deps = movs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId===mov.id).reduce((s,m)=>s+m.amount,0);
+      const wits = movs.filter(m=>m.type==="capital_out"&&m.linkedCapitalId===mov.id).reduce((s,m)=>s+m.amount,0);
+      return mov.amount + deps - wits;
+    };
     const activeCapIn  = [...activeCapIns,...activeLinked].reduce((s,m)=>s+m.amount,0);
     const activeCapOut = [...activeOuts].reduce((s,m)=>s+m.amount,0);
-    const activeReturned = activeCapIns.filter(m=>m.capitalPaid).reduce((s,m)=>s+m.amount,0);
+    const activeReturned = activeCapIns.filter(m=>m.capitalPaid).reduce((s,m)=>s+netCapital(m),0);
     const totalCapIn   = [...activeCapIns,...histCapIns,...allLinked].reduce((s,m)=>s+m.amount,0);
     const totalCapOut  = allOuts.reduce((s,m)=>s+m.amount,0);
-    const totalReturned= [...activeCapIns,...histCapIns].filter(m=>m.capitalPaid).reduce((s,m)=>s+m.amount,0);
+    const totalReturned= [...activeCapIns,...histCapIns].filter(m=>m.capitalPaid).reduce((s,m)=>s+netCapital(m),0);
     const activeSched  = schedules.filter(s=>activeIds.includes(s.capitalMovId));
     const allSched     = schedules.filter(s=>allCapIds.includes(s.capitalMovId));
     const intVal = (s) => s.isCompound ? (s.periodInterest||0) : s.amount;
