@@ -2357,29 +2357,34 @@ export default function App() {
   };
 
   const handleRenovar = async (mov, { amount, rate, frequency, endDate, firstDueDate, prevEndDate }) => {
-    // Update the movement with new conditions, keeping prevEndDate in note
-    const prevNote = mov.note ? `${mov.note} | Renovado desde ${prevEndDate}` : `Renovado desde ${prevEndDate}`;
-    const updated = { ...mov, amount, annualRate: rate, frequency, endDate, firstDueDate: firstDueDate||null, note: prevNote };
+    // Store renewal history in note as JSON array
+    let renewals = [];
+    try { renewals = JSON.parse(mov.note?.match(/\[\[RENOVACIONES:(.*?)\]\]/)?.[1] || "[]"); } catch{}
+    renewals.push({ from: mov.date, to: prevEndDate, amount: mov.amount, rate: mov.annualRate, frequency: mov.frequency });
+    const renewNote = (mov.note?.replace(/\[\[RENOVACIONES:.*?\]\]/, "") || "").trim();
+    const newNote = `${renewNote ? renewNote + " " : ""}[[RENOVACIONES:${JSON.stringify(renewals)}]]`;
+
+    const updated = { ...mov, amount, annualRate: rate, frequency, endDate, firstDueDate: firstDueDate||null, note: newNote };
     setMovements(prev => prev.map(m => m.id===mov.id ? updated : m));
     await sb.patch("movements", mov.id, "id", {
       amount, annual_rate: rate, frequency, end_date: endDate,
-      first_due_date: firstDueDate||null, note: prevNote
+      first_due_date: firstDueDate||null, note: newNote
     });
-    // Regenerate schedules from prevEndDate onwards (keep paid ones)
-    const newSched = buildSchedule(updated);
-    const oldSched = schedules.filter(s=>s.capitalMovId===mov.id);
-    const paidSched = oldSched.filter(s=>s.paid);
-    const mergedSched = newSched.map(ns => {
-      const old = paidSched.find(os=>os.dueDate===ns.dueDate);
-      return old ? {...ns, paid:true, paidDate:old.paidDate} : ns;
-    });
-    const finalSched = [...schedules.filter(s=>s.capitalMovId!==mov.id), ...mergedSched];
+
+    // Keep ALL existing schedules (paid and unpaid up to prevEndDate), add new ones from prevEndDate
+    const existingSched = schedules.filter(s=>s.capitalMovId===mov.id);
+    const keepSched = existingSched.filter(s=>s.dueDate<=prevEndDate); // keep everything up to and including old end date
+    const newSched = buildSchedule({...updated, date: prevEndDate}) // generate from prevEndDate
+      .filter(s=>s.dueDate>prevEndDate); // only future cuotas
+
+    const finalSched = [...schedules.filter(s=>s.capitalMovId!==mov.id), ...keepSched, ...newSched];
     setSchedules(finalSched);
-    // Delete old unpaid, insert new
-    await fetch(`${SUPABASE_URL}/rest/v1/schedules?capital_mov_id=eq.${encodeURIComponent(mov.id)}&paid=eq.false`, {
+
+    // Only delete unpaid schedules AFTER prevEndDate, then insert new ones
+    await fetch(`${SUPABASE_URL}/rest/v1/schedules?capital_mov_id=eq.${encodeURIComponent(mov.id)}&paid=eq.false&due_date=gt.${prevEndDate}`, {
       method:"DELETE", headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}
     });
-    await Promise.all(mergedSched.filter(s=>!s.paid).map(s=>sb.upsert("schedules",schedToDB(s),"schedule_id")));
+    await Promise.all(newSched.map(s=>sb.upsert("schedules",schedToDB(s),"schedule_id")));
     setRenovarModal(null);
     showToast("Inversión renovada ✓");
   };
@@ -2729,8 +2734,21 @@ export default function App() {
                             </div>
                             <div style={{fontSize:12,color:"#6b7094",marginTop:3,display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
                               <span>
-                                {mov.empresa&&<span style={{fontWeight:600,color:"#1a1d2e"}}>{mov.empresa} · </span>}
-                                {mov.note||"Sin nota"} · {fmtDate(mov.date)}{mov.endDate&&<> → {fmtDate(mov.endDate)}</>}
+                              {mov.empresa&&<span style={{fontWeight:600,color:"#1a1d2e"}}>{mov.empresa} · </span>}
+                                {(() => {
+                                  let renewals = [];
+                                  try { renewals = JSON.parse(mov.note?.match(/\[\[RENOVACIONES:(.*?)\]\]/)?.[1]||"[]"); } catch{}
+                                  const cleanNote = (mov.note||"").replace(/\[\[RENOVACIONES:.*?\]\]/,"").trim();
+                                  if (renewals.length > 0) {
+                                    return <>
+                                      {cleanNote&&<>{cleanNote} · </>}
+                                      {fmtDate(mov.date)}
+                                      {renewals.map((r,i)=><span key={i} style={{color:"#7c6af7"}}> → <span style={{fontSize:10,background:"#7c6af715",padding:"1px 5px",borderRadius:10,fontWeight:600}}>Ren.</span> {fmtDate(r.to)}</span>)}
+                                      {mov.endDate&&<> → {fmtDate(mov.endDate)}</>}
+                                    </>;
+                                  }
+                                  return <>{cleanNote||"Sin nota"} · {fmtDate(mov.date)}{mov.endDate&&<> → {fmtDate(mov.endDate)}</>}</>;
+                                })()}
                                 {movSched.length>0&&<span style={{marginLeft:8,color:"#60a5fa"}}>· {paidCount}/{movSched.length} cuotas pagas</span>}
                               </span>
                               {totalInterest>0&&<>
@@ -2753,6 +2771,26 @@ export default function App() {
                         {isExpanded&&(
                           <div style={{borderTop:"1px solid #eef0f8",padding:"12px 16px 14px",background:"#fafbff",borderRadius:"0 0 12px 12px"}}>
                             <div style={{fontSize:11,fontWeight:700,color:"#6b7094",letterSpacing:1,marginBottom:10,textTransform:"uppercase"}}>Movimientos cronológicos</div>
+                            {/* Renovation lines */}
+                            {(() => {
+                              let renewals = [];
+                              try { renewals = JSON.parse(mov.note?.match(/\[\[RENOVACIONES:(.*?)\]\]/)?.[1]||"[]"); } catch{}
+                              return renewals.map((r,i)=>(
+                                <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:10,background:"#ede9fe",border:"1px solid #7c6af750",marginBottom:6}}>
+                                  <div style={{width:30,height:30,borderRadius:9,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,background:"#7c6af718",color:"#7c6af7"}}>🔄</div>
+                                  <div style={{flex:1}}>
+                                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                                      <span style={{fontWeight:600,fontSize:13,color:"#7c6af7"}}>Renovación #{i+1}</span>
+                                      <span style={{fontSize:11,padding:"2px 7px",borderRadius:20,background:"#7c6af720",color:"#7c6af7",fontWeight:600}}>{FREQUENCIES.find(f=>f.key===r.frequency)?.label||r.frequency}</span>
+                                      <span style={{fontSize:11,padding:"2px 7px",borderRadius:20,background:"#7c6af720",color:"#7c6af7",fontWeight:600}}>{parseFloat(r.rate).toFixed(2)}% anual</span>
+                                    </div>
+                                    <div style={{fontSize:12,color:"#6b7094",marginTop:2}}>
+                                      Período anterior: {fmtDate(r.from)} → {fmtDate(r.to)} · Capital: {fmt(r.amount)}
+                                    </div>
+                                  </div>
+                                </div>
+                              ));
+                            })()}
                             {(()=>{
                               let runningCapital=mov.amount;
                               return timeline.map(item=>{
