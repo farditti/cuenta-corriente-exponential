@@ -927,6 +927,72 @@ function AttachmentModal({ attachments, onClose }) {
 }
 
 // ─── Mark as Paid Modal ───────────────────────────────────────────────────────
+function RenovarModal({ mov, onConfirm, onClose }) {
+  const today = new Date().toISOString().slice(0,10);
+  const [amount,    setAmount]    = useState(String(mov.amount));
+  const [rate,      setRate]      = useState(String(mov.annualRate));
+  const [frequency, setFrequency] = useState(mov.frequency||"monthly");
+  const [endDate,   setEndDate]   = useState("");
+  const [firstDue,  setFirstDue]  = useState("");
+
+  const prevEnd = mov.endDate;
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:150}} onClick={onClose}>
+      <div style={{background:"#fff",borderRadius:18,padding:28,width:"min(460px,94vw)"}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+          <div style={{width:42,height:42,borderRadius:12,background:"#7c6af720",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🔄</div>
+          <div>
+            <div style={{fontWeight:700,fontSize:17}}>Renovar inversión</div>
+            <div style={{fontSize:13,color:"#6b7094"}}>Vencimiento anterior: {prevEnd ? `${prevEnd.split("-")[2]}/${prevEnd.split("-")[1]}/${prevEnd.split("-")[0]}` : "—"}</div>
+          </div>
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+          <div>
+            <label style={{fontSize:12,fontWeight:600,color:"#6b7094",display:"block",marginBottom:4}}>Capital</label>
+            <input className="inp" type="number" value={amount} onChange={e=>setAmount(e.target.value)} />
+          </div>
+          <div>
+            <label style={{fontSize:12,fontWeight:600,color:"#6b7094",display:"block",marginBottom:4}}>Tasa anual %</label>
+            <input className="inp" type="number" step="0.01" value={rate} onChange={e=>setRate(e.target.value)} />
+          </div>
+        </div>
+
+        <div style={{marginBottom:12}}>
+          <label style={{fontSize:12,fontWeight:600,color:"#6b7094",display:"block",marginBottom:4}}>Frecuencia</label>
+          <select className="inp" value={frequency} onChange={e=>setFrequency(e.target.value)}>
+            {FREQUENCIES.filter(f=>f.key!=="at_maturity"||true).map(f=><option key={f.key} value={f.key}>{f.label}</option>)}
+          </select>
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+          <div>
+            <label style={{fontSize:12,fontWeight:600,color:"#6b7094",display:"block",marginBottom:4}}>Nueva fecha de fin *</label>
+            <input className="inp" type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} min={prevEnd||today} />
+          </div>
+          <div>
+            <label style={{fontSize:12,fontWeight:600,color:"#6b7094",display:"block",marginBottom:4}}>Fecha primera cuota</label>
+            <input className="inp" type="date" value={firstDue} onChange={e=>setFirstDue(e.target.value)} min={prevEnd||today} max={endDate||undefined} />
+          </div>
+        </div>
+
+        <div style={{fontSize:11,color:"#6b7094",marginBottom:20,padding:"10px 12px",background:"#f8f9ff",borderRadius:8}}>
+          ℹ Las cuotas anteriores al vencimiento original quedan intactas. Se generan nuevas cuotas desde la fecha de renovación.
+        </div>
+
+        <div style={{display:"flex",gap:10}}>
+          <button className="btn-ghost" onClick={onClose} style={{flex:1}}>Cancelar</button>
+          <button className="btn-primary" onClick={()=>{
+            if(!endDate){alert("Ingresá la nueva fecha de fin");return;}
+            onConfirm({amount:parseFloat(amount)||mov.amount, rate:parseFloat(rate)||mov.annualRate, frequency, endDate, firstDueDate:firstDue||undefined, prevEndDate:prevEnd});
+          }} style={{flex:2,background:"#7c6af7"}}>🔄 Confirmar renovación</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CapitalReturnModal({ movId, onConfirm, onClose }) {
   const today = new Date().toISOString().slice(0,10);
   const [date, setDate] = useState(today);
@@ -1811,7 +1877,8 @@ export default function App() {
   const [statementModal, setStatementModal] = useState(null);
   const [histOpenDash, setHistOpenDash] = useState(false);
   const [histOpenInv, setHistOpenInv]   = useState(false);
-  const [capitalReturnModal, setCapitalReturnModal] = useState(null); // { movId } // { pendingSave: fn, paidCount: n }
+  const [capitalReturnModal, setCapitalReturnModal] = useState(null);
+  const [renovarModal, setRenovarModal] = useState(null); // { mov } // { pendingSave: fn, paidCount: n }
 
   const emptyMovForm = { investorId:"", type:"capital_in", amount:"", date:"", endDate:"", annualRate:"", frequency:"monthly", interestType:"simple", empresa:"", note:"", attachments:[], linkedCapitalId:"", firstDueDate:"" };
   const [movForm, setMovForm]   = useState(emptyMovForm);
@@ -2289,7 +2356,33 @@ export default function App() {
     setMarkPaidItem(null);
   };
 
-  const handleMarkAllPaid = async (finalItem) => {
+  const handleRenovar = async (mov, { amount, rate, frequency, endDate, firstDueDate, prevEndDate }) => {
+    // Update the movement with new conditions, keeping prevEndDate in note
+    const prevNote = mov.note ? `${mov.note} | Renovado desde ${prevEndDate}` : `Renovado desde ${prevEndDate}`;
+    const updated = { ...mov, amount, annualRate: rate, frequency, endDate, firstDueDate: firstDueDate||null, note: prevNote };
+    setMovements(prev => prev.map(m => m.id===mov.id ? updated : m));
+    await sb.patch("movements", mov.id, "id", {
+      amount, annual_rate: rate, frequency, end_date: endDate,
+      first_due_date: firstDueDate||null, note: prevNote
+    });
+    // Regenerate schedules from prevEndDate onwards (keep paid ones)
+    const newSched = buildSchedule(updated);
+    const oldSched = schedules.filter(s=>s.capitalMovId===mov.id);
+    const paidSched = oldSched.filter(s=>s.paid);
+    const mergedSched = newSched.map(ns => {
+      const old = paidSched.find(os=>os.dueDate===ns.dueDate);
+      return old ? {...ns, paid:true, paidDate:old.paidDate} : ns;
+    });
+    const finalSched = [...schedules.filter(s=>s.capitalMovId!==mov.id), ...mergedSched];
+    setSchedules(finalSched);
+    // Delete old unpaid, insert new
+    await fetch(`${SUPABASE_URL}/rest/v1/schedules?capital_mov_id=eq.${encodeURIComponent(mov.id)}&paid=eq.false`, {
+      method:"DELETE", headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}
+    });
+    await Promise.all(mergedSched.filter(s=>!s.paid).map(s=>sb.upsert("schedules",schedToDB(s),"schedule_id")));
+    setRenovarModal(null);
+    showToast("Inversión renovada ✓");
+  };
     const paidDate = new Date().toISOString().slice(0,10);
     const allForMov = schedules.filter(s=>s.capitalMovId===finalItem.capitalMovId&&!s.paid);
     setSchedules(prev=>prev.map(s=>s.capitalMovId===finalItem.capitalMovId&&!s.paid?{...s,paid:true,paidDate}:s));
@@ -2648,6 +2741,7 @@ export default function App() {
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
                             {hasContent&&<span style={{fontSize:18,color:"#7c6af7",transform:isExpanded?"rotate(90deg)":"rotate(0)",transition:"transform 0.2s",lineHeight:1}}>›</span>}
+                            <button onClick={e=>{e.stopPropagation();setRenovarModal({mov});}} title="Renovar" style={{width:28,height:28,borderRadius:8,border:"1px solid #dde1f0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>🔄</button>
                             <button className="edit-btn" onClick={e=>{e.stopPropagation();openEdit(mov)}}>✏</button>
                             <button className="delete-btn" onClick={e=>{e.stopPropagation();setDeleteConfirm(mov.id)}}>✕</button>
                           </div>
@@ -3241,6 +3335,8 @@ export default function App() {
         await Promise.all(Object.entries(c).map(([invId,cred])=>sb.upsert("credentials",credToDB(parseInt(invId),cred),"investor_id")));
         showToast("Accesos guardados");
       }} onLoginAs={inv=>{setAccessModal(false);setClientSession(inv);}} onClose={()=>setAccessModal(false)} />}
+
+      {renovarModal && <RenovarModal mov={renovarModal.mov} onConfirm={(params)=>handleRenovar(renovarModal.mov, params)} onClose={()=>setRenovarModal(null)} />}
 
       {capitalReturnModal && <CapitalReturnModal movId={capitalReturnModal.movId} onConfirm={(movId, date)=>{
         setMovements(prev=>prev.map(m=>m.id===movId?{...m,capitalPaid:true,capitalPaidDate:date}:m));
