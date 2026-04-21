@@ -2364,23 +2364,27 @@ export default function App() {
     const renewNote = (mov.note?.replace(/\[\[RENOVACIONES:.*?\]\]/, "") || "").trim();
     const newNote = `${renewNote ? renewNote + " " : ""}[[RENOVACIONES:${JSON.stringify(renewals)}]]`;
 
-    const updated = { ...mov, amount, annualRate: rate, frequency, endDate, firstDueDate: firstDueDate||null, note: newNote };
+    // firstDueDate for new period = day after prevEndDate or user-specified
+    const newFirstDue = firstDueDate || prevEndDate;
+    const updated = { ...mov, amount, annualRate: rate, frequency, endDate, firstDueDate: newFirstDue, note: newNote };
     setMovements(prev => prev.map(m => m.id===mov.id ? updated : m));
     await sb.patch("movements", mov.id, "id", {
       amount, annual_rate: rate, frequency, end_date: endDate,
-      first_due_date: firstDueDate||null, note: newNote
+      first_due_date: newFirstDue, note: newNote
     });
 
-    // Keep ALL existing schedules (paid and unpaid up to prevEndDate), add new ones from prevEndDate
+    // Keep ALL existing schedules up to prevEndDate
     const existingSched = schedules.filter(s=>s.capitalMovId===mov.id);
-    const keepSched = existingSched.filter(s=>s.dueDate<=prevEndDate); // keep everything up to and including old end date
-    const newSched = buildSchedule({...updated, date: prevEndDate}) // generate from prevEndDate
-      .filter(s=>s.dueDate>prevEndDate); // only future cuotas
+    const keepSched = existingSched.filter(s=>s.dueDate<=prevEndDate);
+
+    // Generate new schedules: use prevEndDate as startDate so addMonths gives correct first due
+    const movForSched = { ...updated, date: prevEndDate, firstDueDate: newFirstDue };
+    const newSched = buildSchedule(movForSched).filter(s=>s.dueDate>prevEndDate);
 
     const finalSched = [...schedules.filter(s=>s.capitalMovId!==mov.id), ...keepSched, ...newSched];
     setSchedules(finalSched);
 
-    // Only delete unpaid schedules AFTER prevEndDate, then insert new ones
+    // Delete only unpaid schedules AFTER prevEndDate, then insert new ones
     await fetch(`${SUPABASE_URL}/rest/v1/schedules?capital_mov_id=eq.${encodeURIComponent(mov.id)}&paid=eq.false&due_date=gt.${prevEndDate}`, {
       method:"DELETE", headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}
     });
@@ -2787,6 +2791,26 @@ export default function App() {
                                     <div style={{fontSize:12,color:"#6b7094",marginTop:2}}>
                                       Período anterior: {fmtDate(r.from)} → {fmtDate(r.to)} · Capital: {fmt(r.amount)}
                                     </div>
+                                  </div>
+                                  <div style={{display:"flex",gap:6,flexShrink:0}}>
+                                    <button onClick={e=>{e.stopPropagation();setRenovarModal({mov, editIndex:i, renewal:r});}}
+                                      style={{fontSize:11,padding:"4px 8px",borderRadius:7,border:"1px solid #7c6af750",background:"#fff",color:"#7c6af7",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                                    <button onClick={e=>{e.stopPropagation();
+                                      if(!confirm("¿Eliminar esta renovación? Se revertirá al estado anterior.")) return;
+                                      // Remove this renewal and revert to previous state
+                                      const newRenewals = renewals.filter((_,j)=>j!==i);
+                                      const cleanNote = (mov.note||"").replace(/\[\[RENOVACIONES:.*?\]\]/,"").trim();
+                                      const newNote = newRenewals.length>0 ? `${cleanNote} [[RENOVACIONES:${JSON.stringify(newRenewals)}]]` : cleanNote;
+                                      // Revert to previous period's conditions
+                                      const revertedMov = {...mov, amount:r.amount, annualRate:r.rate, frequency:r.frequency, endDate:r.to, firstDueDate:null, note:newNote};
+                                      setMovements(prev=>prev.map(m=>m.id===mov.id?revertedMov:m));
+                                      sb.patch("movements",mov.id,"id",{amount:r.amount,annual_rate:r.rate,frequency:r.frequency,end_date:r.to,first_due_date:null,note:newNote});
+                                      // Delete schedules after r.to
+                                      fetch(`${SUPABASE_URL}/rest/v1/schedules?capital_mov_id=eq.${encodeURIComponent(mov.id)}&due_date=gt.${r.to}`,{method:"DELETE",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}});
+                                      setSchedules(prev=>prev.filter(s=>!(s.capitalMovId===mov.id&&s.dueDate>r.to)));
+                                      showToast("Renovación eliminada ✓");
+                                    }}
+                                      style={{fontSize:11,padding:"4px 8px",borderRadius:7,border:"1px solid #f8717150",background:"#fff",color:"#f87171",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                                   </div>
                                 </div>
                               ));
@@ -3376,7 +3400,7 @@ export default function App() {
         showToast("Accesos guardados");
       }} onLoginAs={inv=>{setAccessModal(false);setClientSession(inv);}} onClose={()=>setAccessModal(false)} />}
 
-      {renovarModal && <RenovarModal mov={renovarModal.mov} onConfirm={(params)=>handleRenovar(renovarModal.mov, params)} onClose={()=>setRenovarModal(null)} />}
+      {renovarModal && <RenovarModal mov={renovarModal.mov} editIndex={renovarModal.editIndex} renewal={renovarModal.renewal} onConfirm={(params)=>handleRenovar(renovarModal.mov, params)} onClose={()=>setRenovarModal(null)} />}
 
       {capitalReturnModal && <CapitalReturnModal movId={capitalReturnModal.movId} onConfirm={(movId, date)=>{
         setMovements(prev=>prev.map(m=>m.id===movId?{...m,capitalPaid:true,capitalPaidDate:date}:m));
