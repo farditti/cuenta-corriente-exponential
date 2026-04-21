@@ -2359,7 +2359,7 @@ export default function App() {
   const handleRenovar = async (mov, { amount, rate, frequency, endDate, firstDueDate, prevEndDate }) => {
     // Store renewal history in note as JSON array
     let renewals = [];
-    try { renewals = JSON.parse(mov.note?.match(/\[\[RENOVACIONES:(.*?)\]\]/)?.[1] || "[]"); } catch{}
+    try { renewals = JSON.parse(mov.note?.match(/\[\[RENOVACIONES:([\s\S]*?)\]\]/)?.[1] || "[]"); } catch{}
     renewals.push({ from: mov.date, to: prevEndDate, amount: mov.amount, rate: mov.annualRate, frequency: mov.frequency });
     const renewNote = (mov.note?.replace(/\[\[RENOVACIONES:.*?\]\]/, "") || "").trim();
     const newNote = `${renewNote ? renewNote + " " : ""}[[RENOVACIONES:${JSON.stringify(renewals)}]]`;
@@ -2741,7 +2741,7 @@ export default function App() {
                               {mov.empresa&&<span style={{fontWeight:600,color:"#1a1d2e"}}>{mov.empresa} · </span>}
                                 {(() => {
                                   let renewals = [];
-                                  try { renewals = JSON.parse(mov.note?.match(/\[\[RENOVACIONES:(.*?)\]\]/)?.[1]||"[]"); } catch{}
+                                  try { renewals = JSON.parse(mov.note?.match(/\[\[RENOVACIONES:([\s\S]*?)\]\]/)?.[1]||"[]"); } catch{}
                                   const cleanNote = (mov.note||"").replace(/\[\[RENOVACIONES:.*?\]\]/,"").trim();
                                   if (renewals.length > 0) {
                                     return <>
@@ -2778,7 +2778,7 @@ export default function App() {
                             {/* Renovation lines */}
                             {(() => {
                               let renewals = [];
-                              try { renewals = JSON.parse(mov.note?.match(/\[\[RENOVACIONES:(.*?)\]\]/)?.[1]||"[]"); } catch{}
+                              try { renewals = JSON.parse(mov.note?.match(/\[\[RENOVACIONES:([\s\S]*?)\]\]/)?.[1]||"[]"); } catch{}
                               return renewals.map((r,i)=>(
                                 <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:10,background:"#ede9fe",border:"1px solid #7c6af750",marginBottom:6}}>
                                   <div style={{width:30,height:30,borderRadius:9,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,background:"#7c6af718",color:"#7c6af7"}}>🔄</div>
