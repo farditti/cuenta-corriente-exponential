@@ -2383,6 +2383,8 @@ export default function App() {
     setRenovarModal(null);
     showToast("Inversión renovada ✓");
   };
+
+  const handleMarkAllPaid = async (finalItem) => {
     const paidDate = new Date().toISOString().slice(0,10);
     const allForMov = schedules.filter(s=>s.capitalMovId===finalItem.capitalMovId&&!s.paid);
     setSchedules(prev=>prev.map(s=>s.capitalMovId===finalItem.capitalMovId&&!s.paid?{...s,paid:true,paidDate}:s));
