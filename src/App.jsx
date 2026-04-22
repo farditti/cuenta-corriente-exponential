@@ -2807,11 +2807,14 @@ export default function App() {
                                           const newNote = newRenewals.length>0?`${cleanNote} ##REN:${JSON.stringify(newRenewals)}##`:cleanNote;
                                           const prevRenewal = i > 0 ? renewals[i-1] : null;
                                           const revertEndDate = prevRenewal ? prevRenewal.to : r.to;
+                                          const deleteAfterDate = prevRenewal ? prevRenewal.to : r.to;
                                           const revertedMov={...mov,amount:r.amount,annualRate:r.rate,frequency:r.frequency,endDate:revertEndDate,firstDueDate:null,note:newNote};
                                           setMovements(prev=>prev.map(m=>m.id===mov.id?revertedMov:m));
                                           sb.patch("movements",mov.id,"id",{amount:r.amount,annual_rate:r.rate,frequency:r.frequency,end_date:revertEndDate,first_due_date:null,note:newNote});
-                                          fetch(`${SUPABASE_URL}/rest/v1/schedules?capital_mov_id=eq.${encodeURIComponent(mov.id)}&due_date=gt.${revertEndDate}`,{method:"DELETE",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}});
-                                          setSchedules(prev=>prev.filter(s=>!(s.capitalMovId===mov.id&&s.dueDate>revertEndDate)));
+                                          // Only delete schedules that were added by this renewal (after its start date)
+                                          const renewalStartDate = prevRenewal ? prevRenewal.to : r.to;
+                                          fetch(`${SUPABASE_URL}/rest/v1/schedules?capital_mov_id=eq.${encodeURIComponent(mov.id)}&due_date=gt.${renewalStartDate}&paid=eq.false`,{method:"DELETE",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}});
+                                          setSchedules(prev=>prev.filter(s=>!(s.capitalMovId===mov.id&&s.dueDate>renewalStartDate&&!s.paid)));
                                           showToast("Renovación eliminada ✓");
                                         }}
                                           style={{fontSize:11,padding:"4px 8px",borderRadius:7,border:"1px solid #f8717150",background:"#fff",color:"#f87171",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
