@@ -2805,11 +2805,11 @@ export default function App() {
                                           const newRenewals = renewals.filter((_,j)=>j!==i);
                                           const cleanNote = (mov.note||"").replace(/##REN:.*?##/s,"").trim();
                                           const newNote = newRenewals.length>0?`${cleanNote} ##REN:${JSON.stringify(newRenewals)}##`:cleanNote;
-                                          const revertedMov={...mov,amount:r.amount,annualRate:r.rate,frequency:r.frequency,endDate:r.to,firstDueDate:null,note:newNote};
+                                          const revertedMov={...mov,amount:r.amount,annualRate:r.rate,frequency:r.frequency,endDate:r.from,firstDueDate:null,note:newNote};
                                           setMovements(prev=>prev.map(m=>m.id===mov.id?revertedMov:m));
-                                          sb.patch("movements",mov.id,"id",{amount:r.amount,annual_rate:r.rate,frequency:r.frequency,end_date:r.to,first_due_date:null,note:newNote});
-                                          fetch(`${SUPABASE_URL}/rest/v1/schedules?capital_mov_id=eq.${encodeURIComponent(mov.id)}&due_date=gt.${r.to}`,{method:"DELETE",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}});
-                                          setSchedules(prev=>prev.filter(s=>!(s.capitalMovId===mov.id&&s.dueDate>r.to)));
+                                          sb.patch("movements",mov.id,"id",{amount:r.amount,annual_rate:r.rate,frequency:r.frequency,end_date:r.from,first_due_date:null,note:newNote});
+                                          fetch(`${SUPABASE_URL}/rest/v1/schedules?capital_mov_id=eq.${encodeURIComponent(mov.id)}&due_date=gt.${r.from}`,{method:"DELETE",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}});
+                                          setSchedules(prev=>prev.filter(s=>!(s.capitalMovId===mov.id&&s.dueDate>r.from)));
                                           showToast("Renovación eliminada ✓");
                                         }}
                                           style={{fontSize:11,padding:"4px 8px",borderRadius:7,border:"1px solid #f8717150",background:"#fff",color:"#f87171",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
