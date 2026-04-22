@@ -2747,11 +2747,12 @@ export default function App() {
                                   try { renewals = JSON.parse(mov.note?.match(/##REN:(.*?)##/s)?.[1]||"[]"); } catch{}
                                   const cleanNote = (mov.note||"").replace(/##REN:.*?##/s, "").trim();
                                   if (renewals.length > 0) {
+                                    const lastRenewal = renewals[renewals.length-1];
                                     return <>
                                       {cleanNote&&<>{cleanNote} · </>}
                                       {fmtDate(mov.date)}
                                       {renewals.map((r,i)=><span key={i} style={{color:"#7c6af7"}}> → <span style={{fontSize:10,background:"#7c6af715",padding:"1px 5px",borderRadius:10,fontWeight:600}}>Ren.</span> {fmtDate(r.to)}</span>)}
-                                      {mov.endDate&&<> → {fmtDate(mov.endDate)}</>}
+                                      {mov.endDate && mov.endDate !== lastRenewal.to && <> → {fmtDate(mov.endDate)}</>}
                                     </>;
                                   }
                                   return <>{cleanNote||"Sin nota"} · {fmtDate(mov.date)}{mov.endDate&&<> → {fmtDate(mov.endDate)}</>}</>;
