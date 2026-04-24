@@ -2360,7 +2360,9 @@ export default function App() {
     // Store renewal history in note as JSON array
     let renewals = [];
     try { renewals = JSON.parse(mov.note?.match(/##REN:(.*?)##/s)?.[1] || "[]"); } catch{}
-    renewals.push({ from: mov.date, to: prevEndDate, amount: mov.amount, rate: mov.annualRate, frequency: mov.frequency });
+    // from = start of current period (prevEndDate if renewing, or original date for first renewal)
+    const currentFrom = renewals.length > 0 ? renewals[renewals.length-1].to : mov.date;
+    renewals.push({ from: currentFrom, to: prevEndDate, amount: mov.amount, rate: mov.annualRate, frequency: mov.frequency });
     const renewNote = (mov.note?.replace(/##REN:.*?##/s, "") || "").trim();
     const newNote = `${renewNote ? renewNote + " " : ""}##REN:${JSON.stringify(renewals)}##`;
 
@@ -2807,14 +2809,15 @@ export default function App() {
                                           const newNote = newRenewals.length>0?`${cleanNote} ##REN:${JSON.stringify(newRenewals)}##`:cleanNote;
                                           const prevRenewal = i > 0 ? renewals[i-1] : null;
                                           const revertEndDate = prevRenewal ? prevRenewal.to : r.to;
-                                          const deleteAfterDate = prevRenewal ? prevRenewal.to : r.to;
-                                          const revertedMov={...mov,amount:r.amount,annualRate:r.rate,frequency:r.frequency,endDate:revertEndDate,firstDueDate:null,note:newNote};
+                                          const revertAmount = prevRenewal ? prevRenewal.amount : r.amount;
+                                          const revertRate = prevRenewal ? prevRenewal.rate : r.rate;
+                                          const revertFreq = prevRenewal ? prevRenewal.frequency : r.frequency;
+                                          const revertedMov={...mov,amount:revertAmount,annualRate:revertRate,frequency:revertFreq,endDate:revertEndDate,firstDueDate:null,note:newNote};
                                           setMovements(prev=>prev.map(m=>m.id===mov.id?revertedMov:m));
-                                          sb.patch("movements",mov.id,"id",{amount:r.amount,annual_rate:r.rate,frequency:r.frequency,end_date:revertEndDate,first_due_date:null,note:newNote});
-                                          // Only delete schedules that were added by this renewal (after its start date)
-                                          const renewalStartDate = prevRenewal ? prevRenewal.to : r.to;
-                                          fetch(`${SUPABASE_URL}/rest/v1/schedules?capital_mov_id=eq.${encodeURIComponent(mov.id)}&due_date=gt.${renewalStartDate}&paid=eq.false`,{method:"DELETE",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}});
-                                          setSchedules(prev=>prev.filter(s=>!(s.capitalMovId===mov.id&&s.dueDate>renewalStartDate&&!s.paid)));
+                                          sb.patch("movements",mov.id,"id",{amount:revertAmount,annual_rate:revertRate,frequency:revertFreq,end_date:revertEndDate,first_due_date:null,note:newNote});
+                                          // Always delete unpaid schedules after THIS renewal's to date
+                                          fetch(`${SUPABASE_URL}/rest/v1/schedules?capital_mov_id=eq.${encodeURIComponent(mov.id)}&due_date=gt.${r.to}&paid=eq.false`,{method:"DELETE",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}});
+                                          setSchedules(prev=>prev.filter(s=>!(s.capitalMovId===mov.id&&s.dueDate>r.to&&!s.paid)));
                                           showToast("Renovación eliminada ✓");
                                         }}
                                           style={{fontSize:11,padding:"4px 8px",borderRadius:7,border:"1px solid #f8717150",background:"#fff",color:"#f87171",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
