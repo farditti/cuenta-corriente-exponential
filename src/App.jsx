@@ -1955,68 +1955,9 @@ export default function App() {
 
       let newAmount;
       if (s.partial && s.partialDays) {
-        // For partial cuotas, split the period by deposits/withdrawals that occurred within it
-        const periodStart = capitalMov.firstDueDate
-          ? capitalMov.date
-          : capitalMov.date;
-        const periodEnd = s.dueDate;
-        // Get all movements (deposits + withdrawals) that happened WITHIN the partial period
-        const movementsInPeriod = [
-          ...allDeposits.filter(d => d.date > capitalMov.date && d.date < periodEnd),
-          ...allWithdrawals.filter(w => w.date > capitalMov.date && w.date < periodEnd),
-        ].sort((a,b) => new Date(a.date) - new Date(b.date));
-
-        if (movementsInPeriod.length === 0) {
-          // No movements within period — use effectiveCapital for all days
-          newAmount = parseFloat((effectiveCapital * capitalMov.annualRate / 100 / 365 * s.partialDays).toFixed(2));
-        } else {
-          // Split period into segments and calculate interest for each
-          const segments = [];
-          let segStart = capitalMov.date;
-          let segCapital = capitalMov.amount;
-          for (const mov of movementsInPeriod) {
-            const days = Math.round((new Date(mov.date+"T12:00:00") - new Date(segStart+"T12:00:00")) / 86400000);
-            if (days > 0) segments.push({ days, capital: segCapital });
-            segStart = mov.date;
-            segCapital += mov.type === "capital_in" ? mov.amount : -mov.amount;
-          }
-          // Last segment to periodEnd
-          const lastDays = Math.round((new Date(periodEnd+"T12:00:00") - new Date(segStart+"T12:00:00")) / 86400000);
-          if (lastDays > 0) segments.push({ days: lastDays, capital: segCapital });
-          newAmount = parseFloat(segments.reduce((acc, seg) => acc + seg.capital * capitalMov.annualRate / 100 / 365 * seg.days, 0).toFixed(2));
-        }
+        newAmount = parseFloat((effectiveCapital * capitalMov.annualRate / 100 / 365 * s.partialDays).toFixed(2));
       } else {
-        // Check if any deposit/withdrawal happened mid-period (not on the same day as due date)
-        const prevDueDate = (() => {
-          // Estimate previous due date = dueDate minus periodMonths
-          const d = new Date(s.dueDate+"T12:00:00");
-          d.setMonth(d.getMonth() - periodMonths);
-          return d.toISOString().slice(0,10);
-        })();
-        const midPeriodMovements = [
-          ...allDeposits.filter(d => d.date > prevDueDate && d.date < s.dueDate && parseInt(d.date.split("-")[2]) !== parseInt(s.dueDate.split("-")[2])),
-          ...allWithdrawals.filter(w => w.date > prevDueDate && w.date < s.dueDate && parseInt(w.date.split("-")[2]) !== parseInt(s.dueDate.split("-")[2])),
-        ].sort((a,b) => new Date(a.date) - new Date(b.date));
-
-        if (midPeriodMovements.length > 0) {
-          // Calculate by segments: capital before deposit × full days + deposit × remaining days
-          const capitalBeforeDeposits = allDeposits.filter(d => d.date <= prevDueDate).reduce((acc,d)=>acc+d.amount,0);
-          const withdrawalsBeforeDeposits = allWithdrawals.filter(w => w.date <= prevDueDate).reduce((acc,w)=>acc+w.amount,0);
-          let segCapital = capitalMov.amount + capitalBeforeDeposits - withdrawalsBeforeDeposits;
-          let segStart = prevDueDate;
-          let totalInterest = 0;
-          for (const mov of midPeriodMovements) {
-            const days = Math.round((new Date(mov.date+"T12:00:00") - new Date(segStart+"T12:00:00")) / 86400000);
-            if (days > 0) totalInterest += segCapital * capitalMov.annualRate / 100 / 365 * days;
-            segStart = mov.date;
-            segCapital += mov.type === "capital_in" ? mov.amount : -mov.amount;
-          }
-          const lastDays = Math.round((new Date(s.dueDate+"T12:00:00") - new Date(segStart+"T12:00:00")) / 86400000);
-          if (lastDays > 0) totalInterest += segCapital * capitalMov.annualRate / 100 / 365 * lastDays;
-          newAmount = parseFloat(totalInterest.toFixed(2));
-        } else {
-          newAmount = parseFloat(((effectiveCapital * capitalMov.annualRate / 100 / 12) * periodMonths).toFixed(2));
-        }
+        newAmount = parseFloat(((effectiveCapital * capitalMov.annualRate / 100 / 12) * periodMonths).toFixed(2));
       }
 
       return {
