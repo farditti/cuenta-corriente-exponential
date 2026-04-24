@@ -24,6 +24,7 @@ const movFromDB = (r) => ({
   date: r.date, endDate: r.end_date, annualRate: r.annual_rate!=null?Number(r.annual_rate):undefined,
   frequency: r.frequency, interestType: r.interest_type, empresa: r.empresa||"",
   linkedCapitalId: r.linked_capital_id||undefined, note: r.note||"",
+  includedInRenewal: r.included_in_renewal||false,
   attachments: r.attachments||[], capitalPaid: r.capital_paid||false, capitalPaidDate: r.capital_paid_date||null,
   paymentDay: r.payment_day!=null?Number(r.payment_day):undefined,
   firstDueDate: r.first_due_date||undefined,
@@ -33,6 +34,7 @@ const movToDB = (m) => ({
   date: m.date, end_date: m.endDate||null, annual_rate: m.annualRate??null,
   frequency: m.frequency||null, interest_type: m.interestType||null, empresa: m.empresa||null,
   linked_capital_id: m.linkedCapitalId||null, note: m.note||null,
+  included_in_renewal: m.includedInRenewal||false,
   attachments: m.attachments||[], capital_paid: m.capitalPaid||false, capital_paid_date: m.capitalPaidDate||null,
   payment_day: m.paymentDay||null, first_due_date: m.firstDueDate||null,
 });
@@ -275,14 +277,12 @@ const buildSchedule = (mov) => {
   }
 
   const lastScheduled = schedule.length > 0 ? schedule[schedule.length - 1].dueDate : startDate;
-  const lastDayOfEndMonth = lastOfMonth(endDate);
-  if (endDate < lastDayOfEndMonth && lastScheduled < endDate) {
+  if (lastScheduled < endDate) {
     const endDay = parseInt(endDate.split("-")[2]);
     const lastSchedDay = parseInt(lastScheduled.split("-")[2]);
     const dayCoincides2 = endDay === lastSchedDay;
     let lastAmount, lastPartial, lastPartialDays = null;
     if (dayCoincides2) {
-      // Same day — calculate exact months elapsed
       const lastD = new Date(lastScheduled + "T12:00:00");
       const endD  = new Date(endDate + "T12:00:00");
       const monthsElapsed = (endD.getFullYear() - lastD.getFullYear()) * 12 + (endD.getMonth() - lastD.getMonth());
@@ -356,9 +356,9 @@ function ClientPortal({ investor, movements, schedules, onLogout }) {
   const histIds    = histCapIns.map(m=>m.id);
   const allCapIds  = [...activeIds, ...histIds];
 
-  const activeLinked = invMovs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&activeIds.includes(m.linkedCapitalId));
+  const activeLinked = invMovs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&activeIds.includes(m.linkedCapitalId)&&!m.includedInRenewal);
   const activeOuts   = invMovs.filter(m=>m.type==="capital_out"&&activeIds.includes(m.linkedCapitalId));
-  const allLinked    = invMovs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&allCapIds.includes(m.linkedCapitalId));
+  const allLinked    = invMovs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&allCapIds.includes(m.linkedCapitalId)&&!m.includedInRenewal);
   const allOuts      = invMovs.filter(m=>m.type==="capital_out"&&allCapIds.includes(m.linkedCapitalId));
 
   const netCap = (mov) => {
@@ -934,7 +934,7 @@ function RenovarModal({ mov, editIndex, renewal, onConfirm, onClose }) {
   const [rate,      setRate]      = useState(String(mov.annualRate));
   const [frequency, setFrequency] = useState(mov.frequency||"monthly");
   const [endDate,   setEndDate]   = useState(mov.endDate||"");
-  const [firstDue,  setFirstDue]  = useState("");
+  const [firstDue,  setFirstDue]  = useState(mov.firstDueDate||"");
 
   const prevEnd = mov.endDate;
 
@@ -1913,11 +1913,11 @@ export default function App() {
     const activeIds = activeCapIns.map(m=>m.id);
     const histIds   = histCapIns.map(m=>m.id);
     const allCapIds = [...activeIds, ...histIds];
-    const activeLinked = movs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&activeIds.includes(m.linkedCapitalId));
+    const activeLinked = movs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&activeIds.includes(m.linkedCapitalId)&&!m.includedInRenewal);
     const activeOuts   = movs.filter(m=>m.type==="capital_out"&&activeIds.includes(m.linkedCapitalId));
-    const histLinked   = movs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&histIds.includes(m.linkedCapitalId));
+    const histLinked   = movs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&histIds.includes(m.linkedCapitalId)&&!m.includedInRenewal);
     const histOuts     = movs.filter(m=>m.type==="capital_out"&&histIds.includes(m.linkedCapitalId));
-    const allLinked    = movs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&allCapIds.includes(m.linkedCapitalId));
+    const allLinked    = movs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&allCapIds.includes(m.linkedCapitalId)&&!m.includedInRenewal);
     const allOuts      = movs.filter(m=>m.type==="capital_out"&&allCapIds.includes(m.linkedCapitalId));
     const netCapital = (mov) => {
       const deps = movs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId===mov.id).reduce((s,m)=>s+m.amount,0);
@@ -2145,8 +2145,12 @@ export default function App() {
       const updatedMovements = movements.map(m => m.id===editId ? updated : m);
       setMovements(updatedMovements);
       if (updated.type === "capital_in" && !updated.linkedCapitalId) {
-        const newSched = buildSchedule(updated);
-        // Read current schedules directly from state ref before updating
+        // Check if this investment has renewals — if so, only rebuild up to first renewal
+        let renewals = [];
+        try { renewals = JSON.parse(updated.note?.match(/##REN:(.*?)##/s)?.[1]||"[]"); } catch{}
+        const firstRenewalDate = renewals.length > 0 ? renewals[0].to : null;
+
+        const newSched = buildSchedule(firstRenewalDate ? {...updated, endDate: firstRenewalDate} : updated);
         const oldSched = schedules.filter(s => s.capitalMovId === editId);
         const originalMov = movements.find(m => m.id === editId);
         const mergedSched = newSched.map(ns => {
@@ -2156,18 +2160,24 @@ export default function App() {
           if (effectiveFrom && ns.dueDate < effectiveFrom && !old) return { ...ns, snapshotCapital: originalMov?.amount ?? ns.snapshotCapital, snapshotRate: originalMov?.annualRate ?? ns.snapshotRate };
           return ns;
         });
-        const base = [...schedules.filter(s=>s.capitalMovId!==editId), ...mergedSched];
+        // Keep renewal period schedules intact
+        const renewalScheds = firstRenewalDate ? oldSched.filter(s=>s.dueDate>firstRenewalDate) : [];
+        const base = [...schedules.filter(s=>s.capitalMovId!==editId), ...mergedSched, ...renewalScheds];
         const finalSchedules = recalcFullSchedule(editId, updatedMovements, base, effectiveFrom);
         setSchedules(finalSchedules);
-        // Persist: delete ALL unpaid schedules for this mov directly from DB, then insert new
-        const deleteFilter = effectiveFrom
-          ? `?capital_mov_id=eq.${encodeURIComponent(editId)}&paid=eq.false&due_date=gte.${effectiveFrom}`
-          : `?capital_mov_id=eq.${encodeURIComponent(editId)}&paid=eq.false`;
+        // Only delete unpaid schedules up to firstRenewalDate
+        const deleteFilter = firstRenewalDate
+          ? (effectiveFrom
+            ? `?capital_mov_id=eq.${encodeURIComponent(editId)}&paid=eq.false&due_date=gte.${effectiveFrom}&due_date=lte.${firstRenewalDate}`
+            : `?capital_mov_id=eq.${encodeURIComponent(editId)}&paid=eq.false&due_date=lte.${firstRenewalDate}`)
+          : (effectiveFrom
+            ? `?capital_mov_id=eq.${encodeURIComponent(editId)}&paid=eq.false&due_date=gte.${effectiveFrom}`
+            : `?capital_mov_id=eq.${encodeURIComponent(editId)}&paid=eq.false`);
         await fetch(`${SUPABASE_URL}/rest/v1/schedules${deleteFilter}`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json", "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
         });
-        await Promise.all(finalSchedules.filter(s=>s.capitalMovId===editId&&!s.paid).map(s=>sb.upsert("schedules",schedToDB(s),"schedule_id")));
+        await Promise.all(finalSchedules.filter(s=>s.capitalMovId===editId&&!s.paid&&(!firstRenewalDate||s.dueDate<=firstRenewalDate)).map(s=>sb.upsert("schedules",schedToDB(s),"schedule_id")));
         showToast(`Inversión actualizada · cuotas regeneradas ✓`);
       } else if (updated.type === "capital_in" && updated.linkedCapitalId) {
         setSchedules(prev => { finalSchedules=recalcFullSchedule(updated.linkedCapitalId,updatedMovements,prev,effectiveFrom); persistSchedRecalc(finalSchedules,updated.linkedCapitalId,prev); return finalSchedules; });
@@ -2392,6 +2402,13 @@ export default function App() {
       method:"DELETE", headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}
     });
     await Promise.all(newSched.map(s=>sb.upsert("schedules",schedToDB(s),"schedule_id")));
+    // Mark all linked deposits as includedInRenewal
+    const linkedDeposits = movements.filter(m=>m.type==="capital_in"&&m.linkedCapitalId===mov.id&&!m.includedInRenewal);
+    for (const dep of linkedDeposits) {
+      await sb.patch("movements", dep.id, "id", {included_in_renewal: true});
+    }
+    setMovements(prev=>prev.map(m=>linkedDeposits.find(d=>d.id===m.id)?{...m,includedInRenewal:true}:m));
+
     setRenovarModal(null);
     showToast("Inversión renovada ✓");
   };
