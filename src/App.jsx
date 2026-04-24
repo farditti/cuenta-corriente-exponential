@@ -2005,7 +2005,7 @@ export default function App() {
     const capitalMov = allMovements.find(m => m.id === capitalMovId);
     if (!capitalMov) return allSchedules;
 
-    const allDeposits   = allMovements.filter(m => m.type==="capital_in"  && m.linkedCapitalId===capitalMovId).sort((a,b)=>new Date(a.date)-new Date(b.date));
+    const allDeposits   = allMovements.filter(m => m.type==="capital_in"  && m.linkedCapitalId===capitalMovId && !m.includedInRenewal).sort((a,b)=>new Date(a.date)-new Date(b.date));
     const allWithdrawals = allMovements.filter(m => m.type==="capital_out" && m.linkedCapitalId===capitalMovId).sort((a,b)=>new Date(a.date)-new Date(b.date));
 
     const freq = FREQUENCIES.find(f => f.key === (capitalMov.frequency || "monthly")) || FREQUENCIES[0];
@@ -2718,7 +2718,10 @@ export default function App() {
                     const linkedDeposits=movements.filter(m=>m.type==="capital_in"&&m.linkedCapitalId===mov.id).sort((a,b)=>new Date(a.date)-new Date(b.date));
                     const totalWithdrawn=linkedWithdrawals.reduce((s,w)=>s+w.amount,0);
                     const totalDeposited=linkedDeposits.reduce((s,d)=>s+d.amount,0);
-                    const capitalBalance=mov.amount+totalDeposited-totalWithdrawn;
+                    const activeDeposits=linkedDeposits.filter(d=>!d.includedInRenewal);
+                    const activeWithdrawals=linkedWithdrawals;
+                    const activeNetCapital=mov.amount+activeDeposits.reduce((s,d)=>s+d.amount,0)-activeWithdrawals.reduce((s,w)=>s+w.amount,0);
+                    const capitalBalance=mov.amount+activeDeposits.reduce((s,d)=>s+d.amount,0)-totalWithdrawn;
                     let renewals = [];
                     try { renewals = JSON.parse(mov.note?.match(/##REN:(.*?)##/s)?.[1]||"[]"); } catch{}
                     const timeline=[
@@ -2790,7 +2793,7 @@ export default function App() {
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
                             {hasContent&&<span style={{fontSize:18,color:"#7c6af7",transform:isExpanded?"rotate(90deg)":"rotate(0)",transition:"transform 0.2s",lineHeight:1}}>›</span>}
-                            <button onClick={e=>{e.stopPropagation();setRenovarModal({mov, netCapital: mov.amount + totalDeposited - totalWithdrawn});}} title="Renovar" style={{width:28,height:28,borderRadius:8,border:"1px solid #dde1f0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>🔄</button>
+                            <button onClick={e=>{e.stopPropagation();setRenovarModal({mov, netCapital: activeNetCapital});}} title="Renovar" style={{width:28,height:28,borderRadius:8,border:"1px solid #dde1f0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>🔄</button>
                             <button className="edit-btn" onClick={e=>{e.stopPropagation();openEdit(mov)}}>✏</button>
                             <button className="delete-btn" onClick={e=>{e.stopPropagation();setDeleteConfirm(mov.id)}}>✕</button>
                           </div>
@@ -2898,7 +2901,7 @@ export default function App() {
                                 <div style={{fontSize:12,fontWeight:600,color:mov.capitalPaid?"#16a34a":"#7c6af7"}}>Saldo de capital al vencimiento</div>
                                 <div style={{fontSize:11,color:"#6b7094",marginTop:1}}>
                                   {fmt(mov.amount)} inicial
-                                  {totalDeposited>0&&<> + {fmt(totalDeposited)} aportes</>}
+                                  {activeDeposits.length>0&&<> + {fmt(activeDeposits.reduce((s,d)=>s+d.amount,0))} aportes</>}
                                   {totalWithdrawn>0&&<> − {fmt(totalWithdrawn)} retiros</>}
                                   {mov.capitalPaid&&mov.capitalPaidDate&&<> · <span style={{color:"#4ade80"}}>Devuelto el {fmtDate(mov.capitalPaidDate)}</span></>}
                                 </div>
