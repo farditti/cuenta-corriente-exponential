@@ -24,7 +24,6 @@ const movFromDB = (r) => ({
   date: r.date, endDate: r.end_date, annualRate: r.annual_rate!=null?Number(r.annual_rate):undefined,
   frequency: r.frequency, interestType: r.interest_type, empresa: r.empresa||"",
   linkedCapitalId: r.linked_capital_id||undefined, note: r.note||"",
-  includedInRenewal: r.included_in_renewal||false,
   attachments: r.attachments||[], capitalPaid: r.capital_paid||false, capitalPaidDate: r.capital_paid_date||null,
   paymentDay: r.payment_day!=null?Number(r.payment_day):undefined,
   firstDueDate: r.first_due_date||undefined,
@@ -34,7 +33,6 @@ const movToDB = (m) => ({
   date: m.date, end_date: m.endDate||null, annual_rate: m.annualRate??null,
   frequency: m.frequency||null, interest_type: m.interestType||null, empresa: m.empresa||null,
   linked_capital_id: m.linkedCapitalId||null, note: m.note||null,
-  included_in_renewal: m.includedInRenewal||false,
   attachments: m.attachments||[], capital_paid: m.capitalPaid||false, capital_paid_date: m.capitalPaidDate||null,
   payment_day: m.paymentDay||null, first_due_date: m.firstDueDate||null,
 });
@@ -277,12 +275,14 @@ const buildSchedule = (mov) => {
   }
 
   const lastScheduled = schedule.length > 0 ? schedule[schedule.length - 1].dueDate : startDate;
-  if (lastScheduled < endDate) {
+  const lastDayOfEndMonth = lastOfMonth(endDate);
+  if (endDate < lastDayOfEndMonth && lastScheduled < endDate) {
     const endDay = parseInt(endDate.split("-")[2]);
     const lastSchedDay = parseInt(lastScheduled.split("-")[2]);
     const dayCoincides2 = endDay === lastSchedDay;
     let lastAmount, lastPartial, lastPartialDays = null;
     if (dayCoincides2) {
+      // Same day — calculate exact months elapsed
       const lastD = new Date(lastScheduled + "T12:00:00");
       const endD  = new Date(endDate + "T12:00:00");
       const monthsElapsed = (endD.getFullYear() - lastD.getFullYear()) * 12 + (endD.getMonth() - lastD.getMonth());
@@ -356,9 +356,9 @@ function ClientPortal({ investor, movements, schedules, onLogout }) {
   const histIds    = histCapIns.map(m=>m.id);
   const allCapIds  = [...activeIds, ...histIds];
 
-  const activeLinked = invMovs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&activeIds.includes(m.linkedCapitalId)&&!m.includedInRenewal);
+  const activeLinked = invMovs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&activeIds.includes(m.linkedCapitalId));
   const activeOuts   = invMovs.filter(m=>m.type==="capital_out"&&activeIds.includes(m.linkedCapitalId));
-  const allLinked    = invMovs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&allCapIds.includes(m.linkedCapitalId)&&!m.includedInRenewal);
+  const allLinked    = invMovs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&allCapIds.includes(m.linkedCapitalId));
   const allOuts      = invMovs.filter(m=>m.type==="capital_out"&&allCapIds.includes(m.linkedCapitalId));
 
   const netCap = (mov) => {
@@ -927,74 +927,6 @@ function AttachmentModal({ attachments, onClose }) {
 }
 
 // ─── Mark as Paid Modal ───────────────────────────────────────────────────────
-function RenovarModal({ mov, editIndex, renewal, netCapital, onConfirm, onClose }) {
-  const today = new Date().toISOString().slice(0,10);
-  const isEdit = editIndex !== undefined && renewal;
-  const defaultAmount = netCapital ?? mov.amount;
-  const [amount,    setAmount]    = useState(String(defaultAmount));
-  const [rate,      setRate]      = useState(String(mov.annualRate));
-  const [frequency, setFrequency] = useState(mov.frequency||"monthly");
-  const [endDate,   setEndDate]   = useState(mov.endDate||"");
-  const [firstDue,  setFirstDue]  = useState(mov.firstDueDate||"");
-
-  const prevEnd = mov.endDate;
-
-  return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:150}} onClick={onClose}>
-      <div style={{background:"#fff",borderRadius:18,padding:28,width:"min(460px,94vw)"}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
-          <div style={{width:42,height:42,borderRadius:12,background:"#7c6af720",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🔄</div>
-          <div>
-            <div style={{fontWeight:700,fontSize:17}}>Renovar inversión</div>
-            <div style={{fontSize:13,color:"#6b7094"}}>Vencimiento anterior: {prevEnd ? `${prevEnd.split("-")[2]}/${prevEnd.split("-")[1]}/${prevEnd.split("-")[0]}` : "—"}</div>
-          </div>
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-          <div>
-            <label style={{fontSize:12,fontWeight:600,color:"#6b7094",display:"block",marginBottom:4}}>Capital</label>
-            <input className="inp" type="number" value={amount} onChange={e=>setAmount(e.target.value)} />
-          </div>
-          <div>
-            <label style={{fontSize:12,fontWeight:600,color:"#6b7094",display:"block",marginBottom:4}}>Tasa anual %</label>
-            <input className="inp" type="number" step="0.01" value={rate} onChange={e=>setRate(e.target.value)} />
-          </div>
-        </div>
-
-        <div style={{marginBottom:12}}>
-          <label style={{fontSize:12,fontWeight:600,color:"#6b7094",display:"block",marginBottom:4}}>Frecuencia</label>
-          <select className="inp" value={frequency} onChange={e=>setFrequency(e.target.value)}>
-            {FREQUENCIES.filter(f=>f.key!=="at_maturity"||true).map(f=><option key={f.key} value={f.key}>{f.label}</option>)}
-          </select>
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
-          <div>
-            <label style={{fontSize:12,fontWeight:600,color:"#6b7094",display:"block",marginBottom:4}}>Nueva fecha de fin *</label>
-            <input className="inp" type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} min={prevEnd||today} />
-          </div>
-          <div>
-            <label style={{fontSize:12,fontWeight:600,color:"#6b7094",display:"block",marginBottom:4}}>Fecha primera cuota</label>
-            <input className="inp" type="date" value={firstDue} onChange={e=>setFirstDue(e.target.value)} min={prevEnd||today} max={endDate||undefined} />
-          </div>
-        </div>
-
-        <div style={{fontSize:11,color:"#6b7094",marginBottom:20,padding:"10px 12px",background:"#f8f9ff",borderRadius:8}}>
-          ℹ Las cuotas anteriores al vencimiento original quedan intactas. Se generan nuevas cuotas desde la fecha de renovación.
-        </div>
-
-        <div style={{display:"flex",gap:10}}>
-          <button className="btn-ghost" onClick={onClose} style={{flex:1}}>Cancelar</button>
-          <button className="btn-primary" onClick={()=>{
-            if(!endDate){alert("Ingresá la nueva fecha de fin");return;}
-            onConfirm({amount:parseFloat(amount)||mov.amount, rate:parseFloat(rate)||mov.annualRate, frequency, endDate, firstDueDate:firstDue||undefined, prevEndDate:prevEnd});
-          }} style={{flex:2,background:"#7c6af7"}}>🔄 Confirmar renovación</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function CapitalReturnModal({ movId, onConfirm, onClose }) {
   const today = new Date().toISOString().slice(0,10);
   const [date, setDate] = useState(today);
@@ -1879,8 +1811,7 @@ export default function App() {
   const [statementModal, setStatementModal] = useState(null);
   const [histOpenDash, setHistOpenDash] = useState(false);
   const [histOpenInv, setHistOpenInv]   = useState(false);
-  const [capitalReturnModal, setCapitalReturnModal] = useState(null);
-  const [renovarModal, setRenovarModal] = useState(null); // { mov } // { pendingSave: fn, paidCount: n }
+  const [capitalReturnModal, setCapitalReturnModal] = useState(null); // { movId } // { pendingSave: fn, paidCount: n }
 
   const emptyMovForm = { investorId:"", type:"capital_in", amount:"", date:"", endDate:"", annualRate:"", frequency:"monthly", interestType:"simple", empresa:"", note:"", attachments:[], linkedCapitalId:"", firstDueDate:"" };
   const [movForm, setMovForm]   = useState(emptyMovForm);
@@ -1914,11 +1845,11 @@ export default function App() {
     const activeIds = activeCapIns.map(m=>m.id);
     const histIds   = histCapIns.map(m=>m.id);
     const allCapIds = [...activeIds, ...histIds];
-    const activeLinked = movs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&activeIds.includes(m.linkedCapitalId)&&!m.includedInRenewal);
+    const activeLinked = movs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&activeIds.includes(m.linkedCapitalId));
     const activeOuts   = movs.filter(m=>m.type==="capital_out"&&activeIds.includes(m.linkedCapitalId));
-    const histLinked   = movs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&histIds.includes(m.linkedCapitalId)&&!m.includedInRenewal);
+    const histLinked   = movs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&histIds.includes(m.linkedCapitalId));
     const histOuts     = movs.filter(m=>m.type==="capital_out"&&histIds.includes(m.linkedCapitalId));
-    const allLinked    = movs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&allCapIds.includes(m.linkedCapitalId)&&!m.includedInRenewal);
+    const allLinked    = movs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId&&allCapIds.includes(m.linkedCapitalId));
     const allOuts      = movs.filter(m=>m.type==="capital_out"&&allCapIds.includes(m.linkedCapitalId));
     const netCapital = (mov) => {
       const deps = movs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId===mov.id).reduce((s,m)=>s+m.amount,0);
@@ -2005,7 +1936,7 @@ export default function App() {
     const capitalMov = allMovements.find(m => m.id === capitalMovId);
     if (!capitalMov) return allSchedules;
 
-    const allDeposits   = allMovements.filter(m => m.type==="capital_in"  && m.linkedCapitalId===capitalMovId && !m.includedInRenewal).sort((a,b)=>new Date(a.date)-new Date(b.date));
+    const allDeposits   = allMovements.filter(m => m.type==="capital_in"  && m.linkedCapitalId===capitalMovId).sort((a,b)=>new Date(a.date)-new Date(b.date));
     const allWithdrawals = allMovements.filter(m => m.type==="capital_out" && m.linkedCapitalId===capitalMovId).sort((a,b)=>new Date(a.date)-new Date(b.date));
 
     const freq = FREQUENCIES.find(f => f.key === (capitalMov.frequency || "monthly")) || FREQUENCIES[0];
@@ -2146,12 +2077,8 @@ export default function App() {
       const updatedMovements = movements.map(m => m.id===editId ? updated : m);
       setMovements(updatedMovements);
       if (updated.type === "capital_in" && !updated.linkedCapitalId) {
-        // Check if this investment has renewals — if so, only rebuild up to first renewal
-        let renewals = [];
-        try { renewals = JSON.parse(updated.note?.match(/##REN:(.*?)##/s)?.[1]||"[]"); } catch{}
-        const firstRenewalDate = renewals.length > 0 ? renewals[0].to : null;
-
-        const newSched = buildSchedule(firstRenewalDate ? {...updated, endDate: firstRenewalDate} : updated);
+        const newSched = buildSchedule(updated);
+        // Read current schedules directly from state ref before updating
         const oldSched = schedules.filter(s => s.capitalMovId === editId);
         const originalMov = movements.find(m => m.id === editId);
         const mergedSched = newSched.map(ns => {
@@ -2161,24 +2088,18 @@ export default function App() {
           if (effectiveFrom && ns.dueDate < effectiveFrom && !old) return { ...ns, snapshotCapital: originalMov?.amount ?? ns.snapshotCapital, snapshotRate: originalMov?.annualRate ?? ns.snapshotRate };
           return ns;
         });
-        // Keep renewal period schedules intact
-        const renewalScheds = firstRenewalDate ? oldSched.filter(s=>s.dueDate>firstRenewalDate) : [];
-        const base = [...schedules.filter(s=>s.capitalMovId!==editId), ...mergedSched, ...renewalScheds];
+        const base = [...schedules.filter(s=>s.capitalMovId!==editId), ...mergedSched];
         const finalSchedules = recalcFullSchedule(editId, updatedMovements, base, effectiveFrom);
         setSchedules(finalSchedules);
-        // Only delete unpaid schedules up to firstRenewalDate
-        const deleteFilter = firstRenewalDate
-          ? (effectiveFrom
-            ? `?capital_mov_id=eq.${encodeURIComponent(editId)}&paid=eq.false&due_date=gte.${effectiveFrom}&due_date=lte.${firstRenewalDate}`
-            : `?capital_mov_id=eq.${encodeURIComponent(editId)}&paid=eq.false&due_date=lte.${firstRenewalDate}`)
-          : (effectiveFrom
-            ? `?capital_mov_id=eq.${encodeURIComponent(editId)}&paid=eq.false&due_date=gte.${effectiveFrom}`
-            : `?capital_mov_id=eq.${encodeURIComponent(editId)}&paid=eq.false`);
+        // Persist: delete ALL unpaid schedules for this mov directly from DB, then insert new
+        const deleteFilter = effectiveFrom
+          ? `?capital_mov_id=eq.${encodeURIComponent(editId)}&paid=eq.false&due_date=gte.${effectiveFrom}`
+          : `?capital_mov_id=eq.${encodeURIComponent(editId)}&paid=eq.false`;
         await fetch(`${SUPABASE_URL}/rest/v1/schedules${deleteFilter}`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json", "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
         });
-        await Promise.all(finalSchedules.filter(s=>s.capitalMovId===editId&&!s.paid&&(!firstRenewalDate||s.dueDate<=firstRenewalDate)).map(s=>sb.upsert("schedules",schedToDB(s),"schedule_id")));
+        await Promise.all(finalSchedules.filter(s=>s.capitalMovId===editId&&!s.paid).map(s=>sb.upsert("schedules",schedToDB(s),"schedule_id")));
         showToast(`Inversión actualizada · cuotas regeneradas ✓`);
       } else if (updated.type === "capital_in" && updated.linkedCapitalId) {
         setSchedules(prev => { finalSchedules=recalcFullSchedule(updated.linkedCapitalId,updatedMovements,prev,effectiveFrom); persistSchedRecalc(finalSchedules,updated.linkedCapitalId,prev); return finalSchedules; });
@@ -2366,52 +2287,6 @@ export default function App() {
       showToast("Interés marcado como pagado ✓");
     }
     setMarkPaidItem(null);
-  };
-
-  const handleRenovar = async (mov, { amount, rate, frequency, endDate, firstDueDate, prevEndDate }) => {
-    // Store renewal history in note as JSON array
-    let renewals = [];
-    try { renewals = JSON.parse(mov.note?.match(/##REN:(.*?)##/s)?.[1] || "[]"); } catch{}
-    // from = start of current period (prevEndDate if renewing, or original date for first renewal)
-    const currentFrom = renewals.length > 0 ? renewals[renewals.length-1].to : mov.date;
-    renewals.push({ from: currentFrom, to: prevEndDate, amount: mov.amount, rate: mov.annualRate, frequency: mov.frequency });
-    const renewNote = (mov.note?.replace(/##REN:.*?##/s, "") || "").trim();
-    const newNote = `${renewNote ? renewNote + " " : ""}##REN:${JSON.stringify(renewals)}##`;
-
-    // firstDueDate for new period = day after prevEndDate or user-specified
-    const newFirstDue = firstDueDate || prevEndDate;
-    const updated = { ...mov, amount, annualRate: rate, frequency, endDate, firstDueDate: newFirstDue, note: newNote };
-    setMovements(prev => prev.map(m => m.id===mov.id ? updated : m));
-    await sb.patch("movements", mov.id, "id", {
-      amount, annual_rate: rate, frequency, end_date: endDate,
-      first_due_date: newFirstDue, note: newNote
-    });
-
-    // Keep ALL existing schedules up to prevEndDate
-    const existingSched = schedules.filter(s=>s.capitalMovId===mov.id);
-    const keepSched = existingSched.filter(s=>s.dueDate<=prevEndDate);
-
-    // Generate new schedules: use prevEndDate as startDate so addMonths gives correct first due
-    const movForSched = { ...updated, date: prevEndDate, firstDueDate: newFirstDue };
-    const newSched = buildSchedule(movForSched).filter(s=>s.dueDate>prevEndDate);
-
-    const finalSched = [...schedules.filter(s=>s.capitalMovId!==mov.id), ...keepSched, ...newSched];
-    setSchedules(finalSched);
-
-    // Delete only unpaid schedules AFTER prevEndDate, then insert new ones
-    await fetch(`${SUPABASE_URL}/rest/v1/schedules?capital_mov_id=eq.${encodeURIComponent(mov.id)}&paid=eq.false&due_date=gt.${prevEndDate}`, {
-      method:"DELETE", headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}
-    });
-    await Promise.all(newSched.map(s=>sb.upsert("schedules",schedToDB(s),"schedule_id")));
-    // Mark all linked deposits as includedInRenewal
-    const linkedDeposits = movements.filter(m=>m.type==="capital_in"&&m.linkedCapitalId===mov.id&&!m.includedInRenewal);
-    for (const dep of linkedDeposits) {
-      await sb.patch("movements", dep.id, "id", {included_in_renewal: true});
-    }
-    setMovements(prev=>prev.map(m=>linkedDeposits.find(d=>d.id===m.id)?{...m,includedInRenewal:true}:m));
-
-    setRenovarModal(null);
-    showToast("Inversión renovada ✓");
   };
 
   const handleMarkAllPaid = async (finalItem) => {
@@ -2718,17 +2593,11 @@ export default function App() {
                     const linkedDeposits=movements.filter(m=>m.type==="capital_in"&&m.linkedCapitalId===mov.id).sort((a,b)=>new Date(a.date)-new Date(b.date));
                     const totalWithdrawn=linkedWithdrawals.reduce((s,w)=>s+w.amount,0);
                     const totalDeposited=linkedDeposits.reduce((s,d)=>s+d.amount,0);
-                    const activeDeposits=linkedDeposits.filter(d=>!d.includedInRenewal);
-                    const activeWithdrawals=linkedWithdrawals;
-                    const activeNetCapital=mov.amount+activeDeposits.reduce((s,d)=>s+d.amount,0)-activeWithdrawals.reduce((s,w)=>s+w.amount,0);
-                    const capitalBalance=mov.amount+activeDeposits.reduce((s,d)=>s+d.amount,0)-totalWithdrawn;
-                    let renewals = [];
-                    try { renewals = JSON.parse(mov.note?.match(/##REN:(.*?)##/s)?.[1]||"[]"); } catch{}
+                    const capitalBalance=mov.amount+totalDeposited-totalWithdrawn;
                     const timeline=[
                       ...movSched.map(s=>({kind:"interest",date:s.dueDate,data:s})),
                       ...linkedWithdrawals.map(w=>({kind:"withdrawal",date:w.date,data:w})),
                       ...linkedDeposits.map(d=>({kind:"deposit",date:d.date,data:d})),
-                      ...renewals.map((r,i)=>({kind:"renewal",date:r.to,data:r,index:i})),
                     ].sort((a,b)=>new Date(a.date)-new Date(b.date));
                     const hasContent=timeline.length>0;
                     const intVal = (s) => s.isCompound ? (s.periodInterest||0) : s.amount;
@@ -2765,22 +2634,8 @@ export default function App() {
                             </div>
                             <div style={{fontSize:12,color:"#6b7094",marginTop:3,display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
                               <span>
-                              {mov.empresa&&<span style={{fontWeight:600,color:"#1a1d2e"}}>{mov.empresa} · </span>}
-                                {(() => {
-                                  let renewals = [];
-                                  try { renewals = JSON.parse(mov.note?.match(/##REN:(.*?)##/s)?.[1]||"[]"); } catch{}
-                                  const cleanNote = (mov.note||"").replace(/##REN:.*?##/s, "").trim();
-                                  if (renewals.length > 0) {
-                                    const lastRenewal = renewals[renewals.length-1];
-                                    return <>
-                                      {cleanNote&&<>{cleanNote} · </>}
-                                      {fmtDate(mov.date)}
-                                      {renewals.map((r,i)=><span key={i} style={{color:"#7c6af7"}}> → <span style={{fontSize:10,background:"#7c6af715",padding:"1px 5px",borderRadius:10,fontWeight:600}}>Ren.</span> {fmtDate(r.to)}</span>)}
-                                      {mov.endDate && mov.endDate !== lastRenewal.to && <> → {fmtDate(mov.endDate)}</>}
-                                    </>;
-                                  }
-                                  return <>{cleanNote||"Sin nota"} · {fmtDate(mov.date)}{mov.endDate&&<> → {fmtDate(mov.endDate)}</>}</>;
-                                })()}
+                                {mov.empresa&&<span style={{fontWeight:600,color:"#1a1d2e"}}>{mov.empresa} · </span>}
+                                {mov.note||"Sin nota"} · {fmtDate(mov.date)}{mov.endDate&&<> → {fmtDate(mov.endDate)}</>}
                                 {movSched.length>0&&<span style={{marginLeft:8,color:"#60a5fa"}}>· {paidCount}/{movSched.length} cuotas pagas</span>}
                               </span>
                               {totalInterest>0&&<>
@@ -2793,7 +2648,6 @@ export default function App() {
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
                             {hasContent&&<span style={{fontSize:18,color:"#7c6af7",transform:isExpanded?"rotate(90deg)":"rotate(0)",transition:"transform 0.2s",lineHeight:1}}>›</span>}
-                            <button onClick={e=>{e.stopPropagation();setRenovarModal({mov, netCapital: activeNetCapital});}} title="Renovar" style={{width:28,height:28,borderRadius:8,border:"1px solid #dde1f0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>🔄</button>
                             <button className="edit-btn" onClick={e=>{e.stopPropagation();openEdit(mov)}}>✏</button>
                             <button className="delete-btn" onClick={e=>{e.stopPropagation();setDeleteConfirm(mov.id)}}>✕</button>
                           </div>
@@ -2806,47 +2660,6 @@ export default function App() {
                             {(()=>{
                               let runningCapital=mov.amount;
                               return timeline.map(item=>{
-                                if(item.kind==="renewal"){
-                                  const r=item.data; const i=item.index;
-                                  return (
-                                    <div key={`ren_${i}`} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:10,background:"#ede9fe",border:"1px solid #7c6af750",marginBottom:6}}>
-                                      <div style={{width:30,height:30,borderRadius:9,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,background:"#7c6af718",color:"#7c6af7"}}>🔄</div>
-                                      <div style={{flex:1}}>
-                                        <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                                          <span style={{fontWeight:600,fontSize:13,color:"#7c6af7"}}>Renovación #{i+1}</span>
-                                          <span style={{fontSize:11,padding:"2px 7px",borderRadius:20,background:"#7c6af720",color:"#7c6af7",fontWeight:600}}>{FREQUENCIES.find(f=>f.key===r.frequency)?.label||r.frequency}</span>
-                                          <span style={{fontSize:11,padding:"2px 7px",borderRadius:20,background:"#7c6af720",color:"#7c6af7",fontWeight:600}}>{parseFloat(r.rate).toFixed(2)}% anual</span>
-                                        </div>
-                                        <div style={{fontSize:12,color:"#6b7094",marginTop:2}}>
-                                          Período anterior: {fmtDate(r.from)} → {fmtDate(r.to)} · Nuevo período hasta: {fmtDate(i === renewals.length-1 ? mov.endDate : renewals[i+1].from)} · Capital: {fmt(r.amount)}
-                                        </div>
-                                      </div>
-                                      <div style={{display:"flex",gap:6,flexShrink:0}}>
-                                        <button onClick={e=>{e.stopPropagation();setRenovarModal({mov,editIndex:i,renewal:r});}}
-                                          style={{fontSize:11,padding:"4px 8px",borderRadius:7,border:"1px solid #7c6af750",background:"#fff",color:"#7c6af7",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                                        <button onClick={e=>{e.stopPropagation();
-                                          if(!confirm("¿Eliminar esta renovación?")) return;
-                                          const newRenewals = renewals.filter((_,j)=>j!==i);
-                                          const cleanNote = (mov.note||"").replace(/##REN:.*?##/s,"").trim();
-                                          const newNote = newRenewals.length>0?`${cleanNote} ##REN:${JSON.stringify(newRenewals)}##`:cleanNote;
-                                          const prevRenewal = i > 0 ? renewals[i-1] : null;
-                                          const revertEndDate = prevRenewal ? prevRenewal.to : r.to;
-                                          const revertAmount = prevRenewal ? prevRenewal.amount : r.amount;
-                                          const revertRate = prevRenewal ? prevRenewal.rate : r.rate;
-                                          const revertFreq = prevRenewal ? prevRenewal.frequency : r.frequency;
-                                          const revertedMov={...mov,amount:revertAmount,annualRate:revertRate,frequency:revertFreq,endDate:revertEndDate,firstDueDate:null,note:newNote};
-                                          setMovements(prev=>prev.map(m=>m.id===mov.id?revertedMov:m));
-                                          sb.patch("movements",mov.id,"id",{amount:revertAmount,annual_rate:revertRate,frequency:revertFreq,end_date:revertEndDate,first_due_date:null,note:newNote});
-                                          // Always delete unpaid schedules after THIS renewal's to date
-                                          fetch(`${SUPABASE_URL}/rest/v1/schedules?capital_mov_id=eq.${encodeURIComponent(mov.id)}&due_date=gt.${r.to}&paid=eq.false`,{method:"DELETE",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}});
-                                          setSchedules(prev=>prev.filter(s=>!(s.capitalMovId===mov.id&&s.dueDate>r.to&&!s.paid)));
-                                          showToast("Renovación eliminada ✓");
-                                        }}
-                                          style={{fontSize:11,padding:"4px 8px",borderRadius:7,border:"1px solid #f8717150",background:"#fff",color:"#f87171",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
-                                      </div>
-                                    </div>
-                                  );
-                                }
                                 if(item.kind==="withdrawal"){
                                   runningCapital-=item.data.amount;
                                   const w=item.data;
@@ -2901,7 +2714,7 @@ export default function App() {
                                 <div style={{fontSize:12,fontWeight:600,color:mov.capitalPaid?"#16a34a":"#7c6af7"}}>Saldo de capital al vencimiento</div>
                                 <div style={{fontSize:11,color:"#6b7094",marginTop:1}}>
                                   {fmt(mov.amount)} inicial
-                                  {activeDeposits.length>0&&<> + {fmt(activeDeposits.reduce((s,d)=>s+d.amount,0))} aportes</>}
+                                  {totalDeposited>0&&<> + {fmt(totalDeposited)} aportes</>}
                                   {totalWithdrawn>0&&<> − {fmt(totalWithdrawn)} retiros</>}
                                   {mov.capitalPaid&&mov.capitalPaidDate&&<> · <span style={{color:"#4ade80"}}>Devuelto el {fmtDate(mov.capitalPaidDate)}</span></>}
                                 </div>
@@ -3428,8 +3241,6 @@ export default function App() {
         await Promise.all(Object.entries(c).map(([invId,cred])=>sb.upsert("credentials",credToDB(parseInt(invId),cred),"investor_id")));
         showToast("Accesos guardados");
       }} onLoginAs={inv=>{setAccessModal(false);setClientSession(inv);}} onClose={()=>setAccessModal(false)} />}
-
-      {renovarModal && <RenovarModal mov={renovarModal.mov} editIndex={renovarModal.editIndex} renewal={renovarModal.renewal} netCapital={renovarModal.netCapital} onConfirm={(params)=>handleRenovar(renovarModal.mov, params)} onClose={()=>setRenovarModal(null)} />}
 
       {capitalReturnModal && <CapitalReturnModal movId={capitalReturnModal.movId} onConfirm={(movId, date)=>{
         setMovements(prev=>prev.map(m=>m.id===movId?{...m,capitalPaid:true,capitalPaidDate:date}:m));
