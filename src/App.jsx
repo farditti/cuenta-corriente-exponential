@@ -927,12 +927,13 @@ function AttachmentModal({ attachments, onClose }) {
 }
 
 // ─── Mark as Paid Modal ───────────────────────────────────────────────────────
-function RenovarModal({ mov, onConfirm, onClose }) {
+function RenovarModal({ mov, editIndex, renewal, onConfirm, onClose }) {
   const today = new Date().toISOString().slice(0,10);
+  const isEdit = editIndex !== undefined && renewal;
   const [amount,    setAmount]    = useState(String(mov.amount));
   const [rate,      setRate]      = useState(String(mov.annualRate));
   const [frequency, setFrequency] = useState(mov.frequency||"monthly");
-  const [endDate,   setEndDate]   = useState("");
+  const [endDate,   setEndDate]   = useState(mov.endDate||"");
   const [firstDue,  setFirstDue]  = useState("");
 
   const prevEnd = mov.endDate;
@@ -2796,7 +2797,7 @@ export default function App() {
                                           <span style={{fontSize:11,padding:"2px 7px",borderRadius:20,background:"#7c6af720",color:"#7c6af7",fontWeight:600}}>{parseFloat(r.rate).toFixed(2)}% anual</span>
                                         </div>
                                         <div style={{fontSize:12,color:"#6b7094",marginTop:2}}>
-                                          Período anterior: {fmtDate(r.from)} → {fmtDate(r.to)} · Capital: {fmt(r.amount)}
+                                          Período anterior: {fmtDate(r.from)} → {fmtDate(r.to)} · Nuevo período hasta: {fmtDate(i === renewals.length-1 ? mov.endDate : renewals[i+1].from)} · Capital: {fmt(r.amount)}
                                         </div>
                                       </div>
                                       <div style={{display:"flex",gap:6,flexShrink:0}}>
