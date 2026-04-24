@@ -368,7 +368,8 @@ function ClientPortal({ investor, movements, schedules, onLogout }) {
   };
   const activeCapIn  = [...activeCapIns,...activeLinked].reduce((s,m)=>s+m.amount,0);
   const activeCapOut = [...activeOuts].reduce((s,m)=>s+m.amount,0) + activeCapIns.filter(m=>m.capitalPaid).reduce((s,m)=>s+netCap(m),0);
-  const histCapIn    = [...activeCapIns,...histCapIns,...allLinked].reduce((s,m)=>s+m.amount,0);
+  const returnedIds = [...activeCapIns,...histCapIns].filter(m=>m.capitalPaid).map(m=>m.id);
+  const histCapIn    = [...activeCapIns,...histCapIns,...allLinked.filter(m=>!returnedIds.includes(m.linkedCapitalId))].reduce((s,m)=>s+m.amount,0);
   const histCapOut   = [...allOuts].reduce((s,m)=>s+m.amount,0) + [...activeCapIns,...histCapIns].filter(m=>m.capitalPaid).reduce((s,m)=>s+netCap(m),0);
 
   const activeSched = schedules.filter(s=>activeIds.includes(s.capitalMovId));
@@ -1928,7 +1929,8 @@ export default function App() {
     const activeCapIn  = [...activeCapIns,...activeLinked].reduce((s,m)=>s+m.amount,0);
     const activeCapOut = [...activeOuts].reduce((s,m)=>s+m.amount,0);
     const activeReturned = activeCapIns.filter(m=>m.capitalPaid).reduce((s,m)=>s+netCapital(m),0);
-    const totalCapIn   = [...activeCapIns,...histCapIns,...allLinked].reduce((s,m)=>s+m.amount,0);
+    const returnedIds2 = [...activeCapIns,...histCapIns].filter(m=>m.capitalPaid).map(m=>m.id);
+    const totalCapIn   = [...activeCapIns,...histCapIns,...allLinked.filter(m=>!returnedIds2.includes(m.linkedCapitalId))].reduce((s,m)=>s+m.amount,0);
     const totalCapOut  = allOuts.reduce((s,m)=>s+m.amount,0);
     const totalReturned= [...activeCapIns,...histCapIns].filter(m=>m.capitalPaid).reduce((s,m)=>s+netCapital(m),0);
     const activeSched  = schedules.filter(s=>activeIds.includes(s.capitalMovId));
