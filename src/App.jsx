@@ -927,10 +927,11 @@ function AttachmentModal({ attachments, onClose }) {
 }
 
 // ─── Mark as Paid Modal ───────────────────────────────────────────────────────
-function RenovarModal({ mov, editIndex, renewal, onConfirm, onClose }) {
+function RenovarModal({ mov, editIndex, renewal, netCapital, onConfirm, onClose }) {
   const today = new Date().toISOString().slice(0,10);
   const isEdit = editIndex !== undefined && renewal;
-  const [amount,    setAmount]    = useState(String(mov.amount));
+  const defaultAmount = netCapital ?? mov.amount;
+  const [amount,    setAmount]    = useState(String(defaultAmount));
   const [rate,      setRate]      = useState(String(mov.annualRate));
   const [frequency, setFrequency] = useState(mov.frequency||"monthly");
   const [endDate,   setEndDate]   = useState(mov.endDate||"");
@@ -2789,7 +2790,7 @@ export default function App() {
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
                             {hasContent&&<span style={{fontSize:18,color:"#7c6af7",transform:isExpanded?"rotate(90deg)":"rotate(0)",transition:"transform 0.2s",lineHeight:1}}>›</span>}
-                            <button onClick={e=>{e.stopPropagation();setRenovarModal({mov});}} title="Renovar" style={{width:28,height:28,borderRadius:8,border:"1px solid #dde1f0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>🔄</button>
+                            <button onClick={e=>{e.stopPropagation();setRenovarModal({mov, netCapital: mov.amount + totalDeposited - totalWithdrawn});}} title="Renovar" style={{width:28,height:28,borderRadius:8,border:"1px solid #dde1f0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>🔄</button>
                             <button className="edit-btn" onClick={e=>{e.stopPropagation();openEdit(mov)}}>✏</button>
                             <button className="delete-btn" onClick={e=>{e.stopPropagation();setDeleteConfirm(mov.id)}}>✕</button>
                           </div>
@@ -3425,7 +3426,7 @@ export default function App() {
         showToast("Accesos guardados");
       }} onLoginAs={inv=>{setAccessModal(false);setClientSession(inv);}} onClose={()=>setAccessModal(false)} />}
 
-      {renovarModal && <RenovarModal mov={renovarModal.mov} editIndex={renovarModal.editIndex} renewal={renovarModal.renewal} onConfirm={(params)=>handleRenovar(renovarModal.mov, params)} onClose={()=>setRenovarModal(null)} />}
+      {renovarModal && <RenovarModal mov={renovarModal.mov} editIndex={renovarModal.editIndex} renewal={renovarModal.renewal} netCapital={renovarModal.netCapital} onConfirm={(params)=>handleRenovar(renovarModal.mov, params)} onClose={()=>setRenovarModal(null)} />}
 
       {capitalReturnModal && <CapitalReturnModal movId={capitalReturnModal.movId} onConfirm={(movId, date)=>{
         setMovements(prev=>prev.map(m=>m.id===movId?{...m,capitalPaid:true,capitalPaidDate:date}:m));
