@@ -1209,7 +1209,13 @@ function StatementModal({ investor, movements, schedules, onClose }) {
         acc[key].debit+=s.amount;
         return acc;
       },{})),
-    ].sort((a,b)=>new Date(a.date)-new Date(b.date)||(a.typeClass==="cap-out"||a.typeClass==="interest-paid"?-1:b.typeClass==="cap-out"||b.typeClass==="interest-paid"?1:0)||(a.credit?-1:1));
+    ].sort((a,b)=>{
+      if(a.date<b.date) return -1;
+      if(a.date>b.date) return 1;
+      // Same date: cap-out and interest-paid first, then cap-in, then interest
+      const order = t => t==="cap-out"?0:t==="interest-paid"?1:t==="cap-in"?2:3;
+      return order(a.typeClass)-order(b.typeClass);
+    });
 
     let running = openingBalance;
     const rows = transactions.map(t=>{ if(t.credit) running+=t.credit; else running-=t.debit; return {...t,running}; });
