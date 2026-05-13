@@ -1228,10 +1228,10 @@ function StatementModal({ investor, movements, schedules, onClose }) {
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#1a1d2e;font-size:13px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 .page{max-width:800px;margin:0 auto;padding:0;}
-.header{background:#fff;border-bottom:3px solid #1a1d2e;padding:20px 40px;display:flex;justify-content:space-between;align-items:center;}
-.brand img{height:48px;display:block;}
-.doc-title{font-size:16px;font-weight:700;text-align:right;color:#1a1d2e;}
-.doc-sub{font-size:11px;color:#6b7094;margin-top:4px;text-align:right;}
+.header{background:#1a1d2e;color:#fff;padding:24px 40px;display:flex;justify-content:space-between;align-items:center;}
+.brand{background:#fff;border-radius:7px;padding:6px 12px;display:inline-flex;align-items:center;}.brand img{height:36px;display:block;}
+.doc-title{font-size:16px;font-weight:700;text-align:right;}
+.doc-sub{font-size:11px;color:#a0a4c0;margin-top:4px;text-align:right;}
 .body{padding:32px 40px;}
 .account-box{background:#f8f9ff;border-radius:10px;padding:18px 22px;margin-bottom:28px;display:flex;justify-content:space-between;align-items:center;border:1px solid #e8eaf2;}
 .account-name{font-size:16px;font-weight:700;}
