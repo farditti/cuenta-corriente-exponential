@@ -534,7 +534,7 @@ function ClientPortal({ investor, movements, schedules, onLogout }) {
                     ...linked.map(m=>({date:m.date,kind:"deposit",data:m})),
                     ...outs.map(m=>({date:m.date,kind:"withdrawal",data:m})),
                     ...movSched.map(s=>({date:s.dueDate,kind:"interest",data:s})),
-                  ].sort((a,b)=>new Date(a.date)-new Date(b.date)).map((item,i)=>{
+                  ].sort((a,b)=>new Date(a.date)-new Date(b.date)||(a.kind==="withdrawal"?-1:b.kind==="withdrawal"?1:0)).map((item,i)=>{
                     if(item.kind==="interest"){
                       const s=item.data;
                       const isOverdue=!s.paid&&s.dueDate<today&&!s.isCompound;
@@ -1209,7 +1209,7 @@ function StatementModal({ investor, movements, schedules, onClose }) {
         acc[key].debit+=s.amount;
         return acc;
       },{})),
-    ].sort((a,b)=>new Date(a.date)-new Date(b.date) || (a.credit?-1:1));
+    ].sort((a,b)=>new Date(a.date)-new Date(b.date)||(a.typeClass==="cap-out"||a.typeClass==="interest-paid"?-1:b.typeClass==="cap-out"||b.typeClass==="interest-paid"?1:0)||(a.credit?-1:1));
 
     let running = openingBalance;
     const rows = transactions.map(t=>{ if(t.credit) running+=t.credit; else running-=t.debit; return {...t,running}; });
