@@ -1383,15 +1383,13 @@ function ReporteVencimientos({ investors, movements }) {
 
   const [filtEmpresa, setFiltEmpresa] = useState("");
   const [filtInversor, setFiltInversor] = useState("");
-  const [filtDesde, setFiltDesde] = useState(today);
 
   const empresas = [...new Set(movements.filter(m=>m.type==="capital_in"&&!m.linkedCapitalId&&m.empresa).map(m=>m.empresa))].sort();
 
   const rows = movements
-    .filter(m => m.type==="capital_in" && !m.linkedCapitalId && m.endDate)
+    .filter(m => m.type==="capital_in" && !m.linkedCapitalId && m.endDate && !m.capitalPaid)
     .filter(m => !filtEmpresa || m.empresa===filtEmpresa)
     .filter(m => !filtInversor || String(m.investorId)===filtInversor)
-    .filter(m => !filtDesde || m.endDate >= filtDesde)
     .map(m => {
       const inv = investors.find(i=>i.id===m.investorId);
       const aportes = movements.filter(x=>x.type==="capital_in"&&x.linkedCapitalId===m.id).reduce((s,x)=>s+x.amount,0);
@@ -1485,14 +1483,9 @@ function ReporteVencimientos({ investors, movements }) {
             {investors.sort((a,b)=>a.name.localeCompare(b.name)).map(i=><option key={i.id} value={String(i.id)}>{i.name}</option>)}
           </select>
         </div>
-        <div style={{display:"flex",flexDirection:"column",gap:4,minWidth:160}}>
-          <label style={{fontSize:11,fontWeight:600,color:"#6b7094",letterSpacing:.5}}>VENCIMIENTO DESDE</label>
-          <input type="date" value={filtDesde} onChange={e=>setFiltDesde(e.target.value)}
-            style={{padding:"7px 10px",borderRadius:8,border:"1.5px solid #dde1f0",fontSize:13,fontFamily:"inherit",background:"#fff",color:"#1a1d2e"}} />
-        </div>
-        {(filtEmpresa||filtInversor||filtDesde!==today)&&(
+        {(filtEmpresa||filtInversor)&&(
           <div style={{display:"flex",alignItems:"flex-end"}}>
-            <button onClick={()=>{setFiltEmpresa("");setFiltInversor("");setFiltDesde(today);}}
+            <button onClick={()=>{setFiltEmpresa("");setFiltInversor("");}}
               style={{padding:"7px 14px",borderRadius:8,border:"1.5px solid #dde1f0",background:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",color:"#6b7094"}}>
               ✕ Limpiar filtros
             </button>
@@ -1503,11 +1496,11 @@ function ReporteVencimientos({ investors, movements }) {
       {/* Activas primero */}
       <div style={{background:"#fff",border:"1px solid #dde1f0",borderRadius:12,overflow:"hidden",marginBottom:20}}>
         <div style={{padding:"10px 16px",borderBottom:"1px solid #f0f2f8"}}>
-          <span style={{fontWeight:700,fontSize:13,color:"#1a1d2e"}}>Inversiones activas</span>
+          <span style={{fontWeight:700,fontSize:13,color:"#1a1d2e"}}>Capital pendiente — vigentes</span>
           <span style={{marginLeft:8,fontSize:12,color:"#6b7094"}}>({proximas.length})</span>
         </div>
         {proximas.length === 0 ? (
-          <div style={{padding:"24px 16px",color:"#6b7094",fontSize:13,textAlign:"center"}}>No hay inversiones activas para los filtros seleccionados.</div>
+          <div style={{padding:"24px 16px",color:"#6b7094",fontSize:13,textAlign:"center"}}>No hay inversiones vigentes con capital pendiente.</div>
         ) : (
           <table style={{width:"100%",borderCollapse:"collapse"}}>
             <thead><tr style={{background:"#f8f9ff"}}>
@@ -1525,7 +1518,7 @@ function ReporteVencimientos({ investors, movements }) {
       {vencidas.length > 0 && (
         <div style={{marginBottom:20,background:"#fff5f5",border:"1px solid #f8717140",borderRadius:12,overflow:"hidden"}}>
           <div style={{padding:"10px 16px",background:"#f8717112",borderBottom:"1px solid #f8717130"}}>
-            <span style={{fontWeight:700,fontSize:13,color:"#f87171"}}>⚠ Inversiones históricas</span>
+            <span style={{fontWeight:700,fontSize:13,color:"#f87171"}}>⚠ Capital pendiente — vencidas sin devolver</span>
             <span style={{marginLeft:8,fontSize:12,color:"#f87171"}}>({vencidas.length})</span>
           </div>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
