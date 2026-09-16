@@ -533,7 +533,7 @@ function ClientPortal({ investor, movements, schedules, onLogout }) {
                   {[
                     ...linked.map(m=>({date:m.date,kind:"deposit",data:m})),
                     ...outs.map(m=>({date:m.date,kind:"withdrawal",data:m})),
-                    ...movSched.map(s=>({date:s.paidDate||s.dueDate,kind:"interest",data:s})),
+                    ...movSched.map(s=>({date:s.dueDate,kind:"interest",data:s})),
                   ].sort((a,b)=>new Date(a.date)-new Date(b.date)||(a.kind==="withdrawal"?-1:b.kind==="withdrawal"?1:0)).map((item,i)=>{
                     if(item.kind==="interest"){
                       const s=item.data;
@@ -1938,50 +1938,89 @@ export default function App() {
   // Formula: newMonthly = (capital - retiro) × annualRate / remainingMonths
   // ── Full recalc: rebuild schedule for a capital_in considering ALL linked deposits/withdrawals ──
   const recalcFullSchedule = (capitalMovId, allMovements, allSchedules, effectiveFrom = null) => {
-    const capitalMov = allMovements.find(m => m.id === capitalMovId);
+    const capitalMov = allMovements.find(m => String(m.id) === String(capitalMovId));
     if (!capitalMov) return allSchedules;
 
-    const allDeposits   = allMovements.filter(m => m.type==="capital_in"  && m.linkedCapitalId===capitalMovId).sort((a,b)=>new Date(a.date)-new Date(b.date));
-    const allWithdrawals = allMovements.filter(m => m.type==="capital_out" && m.linkedCapitalId===capitalMovId).sort((a,b)=>new Date(a.date)-new Date(b.date));
+    const allDeposits    = allMovements.filter(m => m.type==="capital_in"  && String(m.linkedCapitalId)===String(capitalMovId)).sort((a,b)=>new Date(a.date)-new Date(b.date));
+    const allWithdrawals = allMovements.filter(m => m.type==="capital_out" && String(m.linkedCapitalId)===String(capitalMovId)).sort((a,b)=>new Date(a.date)-new Date(b.date));
 
     const freq = FREQUENCIES.find(f => f.key === (capitalMov.frequency || "monthly")) || FREQUENCIES[0];
     const periodMonths = freq.months || 1;
+    const daysCount = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+
+    // Ordenar todos los schedules de esta inversión para calcular inicio de cada período
+    const movScheds = allSchedules
+      .filter(s => String(s.capitalMovId) === String(capitalMovId))
+      .sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
 
     return allSchedules.map(s => {
-      if (s.capitalMovId !== capitalMovId || s.paid) return s;
-      // If effectiveFrom is set, don't touch cuotas before that date — preserve all existing snapshot data
+      if (String(s.capitalMovId) !== String(capitalMovId) || s.paid) return s;
       if (effectiveFrom && s.dueDate < effectiveFrom) return s;
 
-      // Use strict < so a movement on the same day as a dueDate does NOT affect that cuota
-      const effectiveDeposits    = allDeposits.filter(d => d.date < s.dueDate).reduce((acc,d)=>acc+d.amount, 0);
-      const effectiveWithdrawals = allWithdrawals.filter(w => w.date < s.dueDate).reduce((acc,w)=>acc+w.amount, 0);
-      const effectiveCapital     = capitalMov.amount + effectiveDeposits - effectiveWithdrawals;
-      const hasAdjustment        = effectiveDeposits > 0 || effectiveWithdrawals > 0;
+      // Inicio del período de esta cuota
+      const idx = movScheds.findIndex(ms => ms.scheduleId === s.scheduleId);
+      const periodStart = idx > 0 ? movScheds[idx - 1].dueDate : capitalMov.date;
+      const periodEnd   = s.dueDate;
+
+      // Capital al inicio del período (movimientos ANTES del período)
+      const depositsBeforePeriod    = allDeposits.filter(d => d.date < periodStart).reduce((acc,d)=>acc+d.amount, 0);
+      const withdrawalsBeforePeriod = allWithdrawals.filter(w => w.date < periodStart).reduce((acc,w)=>acc+w.amount, 0);
+      const capitalAtStart = capitalMov.amount + depositsBeforePeriod - withdrawalsBeforePeriod;
+
+      // Movimientos DENTRO del período (>= periodStart y < periodEnd)
+      const eventsInPeriod = [
+        ...allDeposits.filter(d => d.date >= periodStart && d.date < periodEnd).map(d => ({ date: d.date, delta: +d.amount })),
+        ...allWithdrawals.filter(w => w.date >= periodStart && w.date < periodEnd).map(w => ({ date: w.date, delta: -w.amount })),
+      ].sort((a,b) => new Date(a.date) - new Date(b.date));
+
+      const hasAdjustment = allDeposits.some(d => d.date < periodEnd) || allWithdrawals.some(w => w.date < periodEnd);
 
       if (!hasAdjustment) {
-        // No movements affect this cuota — restore original amount and snapshot if previously adjusted
+        // Sin movimientos que afecten esta cuota — restaurar si estaba ajustada
         if (s.originalAmount != null) {
           return { ...s, amount: s.originalAmount, snapshotCapital: capitalMov.amount, snapshotRate: capitalMov.annualRate, adjustedByWithdrawal: false, adjustedByDeposit: false };
         }
         return s;
       }
 
-      if (effectiveCapital <= 0) return { ...s, amount: 0, adjustedByWithdrawal: true };
-
       let newAmount;
-      if (s.partial && s.partialDays) {
-        newAmount = parseFloat((effectiveCapital * capitalMov.annualRate / 100 / 365 * s.partialDays).toFixed(2));
+
+      if (eventsInPeriod.length > 0) {
+        // Cálculo segmentado por días: cada segmento usa el capital vigente en ese tramo
+        let totalInterest = 0;
+        let currentCapital = capitalAtStart;
+        let segStart = periodStart;
+
+        for (const event of eventsInPeriod) {
+          const days = daysCount(segStart, event.date);
+          if (currentCapital > 0 && days > 0)
+            totalInterest += currentCapital * capitalMov.annualRate / 100 / 365 * days;
+          currentCapital += event.delta;
+          segStart = event.date;
+        }
+        // Último segmento: desde el último evento hasta fin de período
+        const days = daysCount(segStart, periodEnd);
+        if (currentCapital > 0 && days > 0)
+          totalInterest += currentCapital * capitalMov.annualRate / 100 / 365 * days;
+
+        newAmount = parseFloat(totalInterest.toFixed(2));
       } else {
-        newAmount = parseFloat(((effectiveCapital * capitalMov.annualRate / 100 / 12) * periodMonths).toFixed(2));
+        // Sin eventos dentro del período: capital ajustado por movimientos anteriores
+        if (capitalAtStart <= 0) return { ...s, amount: 0, adjustedByWithdrawal: true };
+        if (s.partial && s.partialDays) {
+          newAmount = parseFloat((capitalAtStart * capitalMov.annualRate / 100 / 365 * s.partialDays).toFixed(2));
+        } else {
+          newAmount = parseFloat(((capitalAtStart * capitalMov.annualRate / 100 / 12) * periodMonths).toFixed(2));
+        }
       }
 
       return {
         ...s,
         amount: newAmount,
-        snapshotCapital: effectiveCapital,
+        snapshotCapital: capitalAtStart,
         snapshotRate: capitalMov.annualRate,
-        adjustedByWithdrawal: allWithdrawals.some(w => w.date < s.dueDate) || undefined,
-        adjustedByDeposit:    allDeposits.some(d => d.date < s.dueDate) || undefined,
+        adjustedByWithdrawal: allWithdrawals.some(w => w.date < periodEnd) || undefined,
+        adjustedByDeposit:    allDeposits.some(d => d.date < periodEnd)    || undefined,
         originalAmount: s.originalAmount ?? s.amount,
       };
     });
