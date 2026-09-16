@@ -1938,36 +1938,40 @@ export default function App() {
   // Formula: newMonthly = (capital - retiro) × annualRate / remainingMonths
   // ── Full recalc: rebuild schedule for a capital_in considering ALL linked deposits/withdrawals ──
   const recalcFullSchedule = (capitalMovId, allMovements, allSchedules, effectiveFrom = null) => {
-    console.log("[recalc] START capitalMovId=", capitalMovId, typeof capitalMovId);
     const capitalMov = allMovements.find(m => String(m.id) === String(capitalMovId));
-    console.log("[recalc] capitalMov=", !!capitalMov, capitalMov?.id);
     if (!capitalMov) return allSchedules;
 
     const allDeposits    = allMovements.filter(m => m.type==="capital_in"  && String(m.linkedCapitalId)===String(capitalMovId)).sort((a,b)=>new Date(a.date)-new Date(b.date));
     const allWithdrawals = allMovements.filter(m => m.type==="capital_out" && String(m.linkedCapitalId)===String(capitalMovId)).sort((a,b)=>new Date(a.date)-new Date(b.date));
-    console.log("[recalc] deposits=", allDeposits.length, "withdrawals=", allWithdrawals.length);
 
     const freq = FREQUENCIES.find(f => f.key === (capitalMov.frequency || "monthly")) || FREQUENCIES[0];
     const periodMonths = freq.months || 1;
     const daysCount = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
 
+    // Todos los schedules de esta inversión ordenados por dueDate
     const movScheds = allSchedules
       .filter(s => String(s.capitalMovId) === String(capitalMovId))
       .sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
-    console.log("[recalc] schedules encontrados=", movScheds.length);
 
     return allSchedules.map(s => {
       if (String(s.capitalMovId) !== String(capitalMovId) || s.paid) return s;
       if (effectiveFrom && s.dueDate < effectiveFrom) return s;
 
+      const periodEnd = s.dueDate;
       const idx = movScheds.findIndex(ms => ms.scheduleId === s.scheduleId);
-      const periodStart = idx > 0 ? movScheds[idx - 1].dueDate : capitalMov.date;
-      const periodEnd   = s.dueDate;
 
+      // Retroceder hasta encontrar una entrada con DISTINTA dueDate
+      // (evita que residuales _res del mismo período den periodStart = periodEnd)
+      let prevIdx = idx - 1;
+      while (prevIdx >= 0 && movScheds[prevIdx].dueDate === periodEnd) prevIdx--;
+      const periodStart = prevIdx >= 0 ? movScheds[prevIdx].dueDate : capitalMov.date;
+
+      // Capital al inicio del período
       const depositsBeforePeriod    = allDeposits.filter(d => d.date < periodStart).reduce((acc,d)=>acc+d.amount, 0);
       const withdrawalsBeforePeriod = allWithdrawals.filter(w => w.date < periodStart).reduce((acc,w)=>acc+w.amount, 0);
       const capitalAtStart = capitalMov.amount + depositsBeforePeriod - withdrawalsBeforePeriod;
 
+      // Movimientos dentro del período
       const eventsInPeriod = [
         ...allDeposits.filter(d => d.date >= periodStart && d.date < periodEnd).map(d => ({ date: d.date, delta: +d.amount })),
         ...allWithdrawals.filter(w => w.date >= periodStart && w.date < periodEnd).map(w => ({ date: w.date, delta: -w.amount })),
@@ -1982,8 +1986,10 @@ export default function App() {
         return s;
       }
 
-      let newAmount;
+      // Calcular interés total para el período
+      let totalForPeriod;
       if (eventsInPeriod.length > 0) {
+        // Cálculo segmentado por días
         let totalInterest = 0;
         let currentCapital = capitalAtStart;
         let segStart = periodStart;
@@ -1995,16 +2001,25 @@ export default function App() {
         }
         const days = daysCount(segStart, periodEnd);
         if (currentCapital > 0 && days > 0) totalInterest += currentCapital * capitalMov.annualRate / 100 / 365 * days;
-        newAmount = parseFloat(totalInterest.toFixed(2));
+        totalForPeriod = totalInterest;
       } else {
         if (capitalAtStart <= 0) return { ...s, amount: 0, adjustedByWithdrawal: true };
-        if (s.partial && s.partialDays) {
-          newAmount = parseFloat((capitalAtStart * capitalMov.annualRate / 100 / 365 * s.partialDays).toFixed(2));
-        } else {
-          newAmount = parseFloat(((capitalAtStart * capitalMov.annualRate / 100 / 12) * periodMonths).toFixed(2));
-        }
+        totalForPeriod = s.partial && s.partialDays
+          ? capitalAtStart * capitalMov.annualRate / 100 / 365 * s.partialDays
+          : (capitalAtStart * capitalMov.annualRate / 100 / 12) * periodMonths;
       }
-      console.log("[recalc] cuota", s.dueDate, "oldAmount=", s.amount, "newAmount=", newAmount);
+
+      // Para schedules residuales (_res): el monto es total del período menos lo ya pagado
+      let newAmount;
+      if (s.scheduleId?.endsWith('_res')) {
+        const alreadyPaid = movScheds
+          .filter(ms => ms.dueDate === periodEnd && ms.paid)
+          .reduce((sum, ms) => sum + ms.amount, 0);
+        newAmount = parseFloat(Math.max(0, totalForPeriod - alreadyPaid).toFixed(2));
+      } else {
+        newAmount = parseFloat(totalForPeriod.toFixed(2));
+      }
+
       return {
         ...s,
         amount: newAmount,
@@ -2098,7 +2113,6 @@ export default function App() {
         setSchedules(prev => { finalSchedules=recalcFullSchedule(updated.linkedCapitalId,updatedMovements,prev); persistSchedRecalc(finalSchedules,updated.linkedCapitalId,prev); return finalSchedules; });
         showToast("Aporte adicional registrado · cuotas recalculadas ✓");
       } else if (updated.type === "capital_out" && updated.linkedCapitalId) {
-        console.log("[doSave] capital_out linkedCapitalId=", updated.linkedCapitalId, typeof updated.linkedCapitalId);
         setSchedules(prev => { finalSchedules=recalcFullSchedule(updated.linkedCapitalId,updatedMovements,prev); persistSchedRecalc(finalSchedules,updated.linkedCapitalId,prev); return finalSchedules; });
         showToast("Retiro registrado · cuotas recalculadas ✓");
       } else {
@@ -2112,9 +2126,8 @@ export default function App() {
 
   // Helper: persist recalculated schedules for a capitalMovId (only unpaid ones change)
   const persistSchedRecalc = (newAllScheds, capitalMovId, prevAllScheds) => {
-    const newForMov = newAllScheds.filter(s=>String(s.capitalMovId)===String(capitalMovId)&&!s.paid);
-    console.log("[persist] upserting", newForMov.length, "schedules para capitalMovId=", capitalMovId);
-    Promise.all(newForMov.map(s=>sb.upsert("schedules",schedToDB(s),"schedule_id")));
+    const newForMov = newAllScheds.filter(s => String(s.capitalMovId) === String(capitalMovId) && !s.paid);
+    Promise.all(newForMov.map(s => sb.upsert("schedules", schedToDB(s), "schedule_id")));
   };
 
   const handleSaveMovement = () => {
