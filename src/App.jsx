@@ -533,7 +533,7 @@ function ClientPortal({ investor, movements, schedules, onLogout }) {
                   {[
                     ...linked.map(m=>({date:m.date,kind:"deposit",data:m})),
                     ...outs.map(m=>({date:m.date,kind:"withdrawal",data:m})),
-                    ...movSched.map(s=>({date:s.dueDate,kind:"interest",data:s})),
+                    ...movSched.map(s=>({date:s.paidDate||s.dueDate,kind:"interest",data:s})),
                   ].sort((a,b)=>new Date(a.date)-new Date(b.date)||(a.kind==="withdrawal"?-1:b.kind==="withdrawal"?1:0)).map((item,i)=>{
                     if(item.kind==="interest"){
                       const s=item.data;
