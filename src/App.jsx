@@ -1948,7 +1948,7 @@ export default function App() {
     const periodMonths = freq.months || 1;
     const daysCount = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
 
-    // Ordenar todos los schedules de esta inversión para calcular inicio de cada período
+    // Todos los schedules de esta inversión ordenados por fecha, para calcular inicio de cada período
     const movScheds = allSchedules
       .filter(s => String(s.capitalMovId) === String(capitalMovId))
       .sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
@@ -1957,7 +1957,7 @@ export default function App() {
       if (String(s.capitalMovId) !== String(capitalMovId) || s.paid) return s;
       if (effectiveFrom && s.dueDate < effectiveFrom) return s;
 
-      // Inicio del período de esta cuota
+      // Inicio del período de esta cuota = vencimiento de la cuota anterior (o fecha de inicio de la inversión)
       const idx = movScheds.findIndex(ms => ms.scheduleId === s.scheduleId);
       const periodStart = idx > 0 ? movScheds[idx - 1].dueDate : capitalMov.date;
       const periodEnd   = s.dueDate;
@@ -1976,7 +1976,6 @@ export default function App() {
       const hasAdjustment = allDeposits.some(d => d.date < periodEnd) || allWithdrawals.some(w => w.date < periodEnd);
 
       if (!hasAdjustment) {
-        // Sin movimientos que afecten esta cuota — restaurar si estaba ajustada
         if (s.originalAmount != null) {
           return { ...s, amount: s.originalAmount, snapshotCapital: capitalMov.amount, snapshotRate: capitalMov.annualRate, adjustedByWithdrawal: false, adjustedByDeposit: false };
         }
@@ -1986,11 +1985,10 @@ export default function App() {
       let newAmount;
 
       if (eventsInPeriod.length > 0) {
-        // Cálculo segmentado por días: cada segmento usa el capital vigente en ese tramo
+        // Cálculo segmentado por días: días × capital vigente × tasa para cada tramo
         let totalInterest = 0;
         let currentCapital = capitalAtStart;
         let segStart = periodStart;
-
         for (const event of eventsInPeriod) {
           const days = daysCount(segStart, event.date);
           if (currentCapital > 0 && days > 0)
@@ -1998,14 +1996,12 @@ export default function App() {
           currentCapital += event.delta;
           segStart = event.date;
         }
-        // Último segmento: desde el último evento hasta fin de período
         const days = daysCount(segStart, periodEnd);
         if (currentCapital > 0 && days > 0)
           totalInterest += currentCapital * capitalMov.annualRate / 100 / 365 * days;
-
         newAmount = parseFloat(totalInterest.toFixed(2));
       } else {
-        // Sin eventos dentro del período: capital ajustado por movimientos anteriores
+        // Sin eventos dentro del período: capital ajustado por movimientos anteriores, período completo
         if (capitalAtStart <= 0) return { ...s, amount: 0, adjustedByWithdrawal: true };
         if (s.partial && s.partialDays) {
           newAmount = parseFloat((capitalAtStart * capitalMov.annualRate / 100 / 365 * s.partialDays).toFixed(2));
@@ -2120,12 +2116,10 @@ export default function App() {
 
   // Helper: persist recalculated schedules for a capitalMovId (only unpaid ones change)
   const persistSchedRecalc = (newAllScheds, capitalMovId, prevAllScheds) => {
-    const prevForMov = prevAllScheds.filter(s=>s.capitalMovId===capitalMovId&&!s.paid);
-    const newForMov  = newAllScheds.filter(s=>s.capitalMovId===capitalMovId&&!s.paid);
-    Promise.all([
-      ...prevForMov.map(s=>sb.del("schedules",s.scheduleId,"schedule_id")),
-      ...newForMov.map(s=>sb.upsert("schedules",schedToDB(s),"schedule_id")),
-    ]);
+    const newForMov = newAllScheds.filter(s=>String(s.capitalMovId)===String(capitalMovId)&&!s.paid);
+    // Solo upsert (sin DELETE previo): on_conflict=schedule_id actualiza el registro existente.
+    // El DELETE+UPSERT simultáneo causaba race condition que borraba los schedules recalculados.
+    Promise.all(newForMov.map(s=>sb.upsert("schedules",schedToDB(s),"schedule_id")));
   };
 
   const handleSaveMovement = () => {
