@@ -474,7 +474,7 @@ function ClientPortal({ investor, movements, schedules, onLogout }) {
           const vigentes = capitalIns.filter(m=>m.endDate>=today);
           const vencidas = capitalIns.filter(m=>m.endDate<today);
           const renderMov = (mov) => {
-          const movSched = schedules.filter(s=>s.capitalMovId===mov.id).sort((a,b)=>new Date(a.paidDate||a.dueDate)-new Date(b.paidDate||b.dueDate));
+          const movSched = schedules.filter(s=>s.capitalMovId===mov.id).sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate));
           const linked = invMovs.filter(m=>m.type==="capital_in"&&m.linkedCapitalId===mov.id);
           const outs = invMovs.filter(m=>m.type==="capital_out"&&m.linkedCapitalId===mov.id);
           const totalCap = mov.amount + linked.reduce((s,m)=>s+m.amount,0);
@@ -2529,7 +2529,7 @@ export default function App() {
                   const vigentes=allInvs.filter(m=>m.endDate>=todayStr);
                   const vencidas=allInvs.filter(m=>m.endDate<todayStr);
                   const renderMov=(mov)=>{
-                    const movSched=schedules.filter(s=>s.capitalMovId===mov.id).sort((a,b)=>new Date(a.paidDate||a.dueDate)-new Date(b.paidDate||b.dueDate));
+                    const movSched=schedules.filter(s=>s.capitalMovId===mov.id).sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate));
                     const paidCount=movSched.filter(s=>s.paid).length;
                     const today=new Date().toISOString().slice(0,10);
                     const overdueCount=movSched.filter(s=>!s.paid&&s.dueDate<today&&!s.isCompound).length;
@@ -2541,7 +2541,7 @@ export default function App() {
                     const totalDeposited=linkedDeposits.reduce((s,d)=>s+d.amount,0);
                     const capitalBalance=mov.amount+totalDeposited-totalWithdrawn;
                     const timeline=[
-                      ...movSched.map(s=>({kind:"interest",date:s.dueDate,data:s})),
+                      ...movSched.map(s=>({kind:"interest",date:s.paidDate||s.dueDate,data:s})),
                       ...linkedWithdrawals.map(w=>({kind:"withdrawal",date:w.date,data:w})),
                       ...linkedDeposits.map(d=>({kind:"deposit",date:d.date,data:d})),
                     ].sort((a,b)=>new Date(a.date)-new Date(b.date));
